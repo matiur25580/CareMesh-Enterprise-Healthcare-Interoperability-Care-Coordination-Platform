@@ -88,73 +88,73 @@ The following 12 screens are **illustrative vector dashboard concepts**, created
 
 ### 01. Clinical command center
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Clinical command center for care-team workload, patient access signals, active escalations and service-level trends. All values are synthetic and non-clinical.
 
 ![CareMesh illustrative dashboard 1: Clinical command center](docs/assets/dashboard/01-clinical-command-center.svg)
 
 ### 02. Patient longitudinal record
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Longitudinal patient record concept bringing demographics, encounters, conditions and observations into a permission-aware timeline. All data is synthetic.
 
 ![CareMesh illustrative dashboard 2: Patient longitudinal record](docs/assets/dashboard/02-patient-longitudinal-record.svg)
 
 ### 03. FHIR interoperability hub
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+FHIR interoperability hub concept for partner endpoints, supported resource exchanges, validation outcomes and message processing health. All values are synthetic.
 
 ![CareMesh illustrative dashboard 3: FHIR interoperability hub](docs/assets/dashboard/03-fhir-interoperability-hub.svg)
 
 ### 04. Consent & purpose controls
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Consent and purpose-of-use workspace showing authorization state, permitted purposes, effective dates and revocation history. All records are synthetic.
 
 ![CareMesh illustrative dashboard 4: Consent & purpose controls](docs/assets/dashboard/04-consent-purpose-controls.svg)
 
 ### 05. Care-gap follow-up queue
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Care-gap follow-up queue concept for prioritization, due dates, accountable owners and outreach status. All patient examples are synthetic.
 
 ![CareMesh illustrative dashboard 5: Care-gap follow-up queue](docs/assets/dashboard/05-care-gap-follow-up-queue.svg)
 
 ### 06. SLA & quality intelligence
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+SLA and quality intelligence view for follow-up timeliness, care coordination measures and operational exceptions. All metrics are synthetic.
 
 ![CareMesh illustrative dashboard 6: SLA & quality intelligence](docs/assets/dashboard/06-sla-quality-intelligence.svg)
 
 ### 07. Referral coordination
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Referral coordination workspace showing referral lifecycle, receiving organization, handoff ownership and outstanding actions. All records are synthetic.
 
 ![CareMesh illustrative dashboard 7: Referral coordination](docs/assets/dashboard/07-referral-coordination.svg)
 
 ### 08. Clinical observations
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Clinical observations view for structured measurements, provenance, effective times and review status. All clinical examples are synthetic.
 
 ![CareMesh illustrative dashboard 8: Clinical observations](docs/assets/dashboard/08-clinical-observations.svg)
 
 ### 09. Organization network
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Organization network view mapping trusted facilities, care teams, partner relationships and connectivity status. All organizations are illustrative.
 
 ![CareMesh illustrative dashboard 9: Organization network](docs/assets/dashboard/09-organization-network.svg)
 
 ### 10. Audit & access explorer
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Audit and access explorer showing attributable record access, purpose, actor and event history without exposing clinical payloads. All events are synthetic.
 
 ![CareMesh illustrative dashboard 10: Audit & access explorer](docs/assets/dashboard/10-audit-access-explorer.svg)
 
 ### 11. Integration reliability
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Integration reliability view for interface availability, message latency, retry queues and validation failures. All telemetry is synthetic.
 
 ![CareMesh illustrative dashboard 11: Integration reliability](docs/assets/dashboard/11-integration-reliability.svg)
 
 ### 12. Patient experience overview
 
-Care operations • Patient access • Care coordination. This concept view illustrates a representative operator workflow; values are synthetic and do not represent live production telemetry.
+Patient experience overview concept for appointment access, care-plan engagement and service feedback trends. All values are synthetic.
 
 ![CareMesh illustrative dashboard 12: Patient experience overview](docs/assets/dashboard/12-patient-experience-overview.svg)
 
