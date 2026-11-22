@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, AlertCircle, ArrowLeft, CalendarDays, Check, ChevronRight, ClipboardList, FilePlus2, Filter, HeartPulse, LogIn, Plus, Search, ShieldCheck, UserRound, Users, X } from "lucide-react";
 import "./patient-workspace.css";
 
@@ -105,7 +105,7 @@ export default function PatientWorkspace() {
     inactive: patients.filter(patient => patient.status !== "active").length
   }), [patients]);
 
-  async function signIn(event: React.FormEvent<HTMLFormElement>) {
+  async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true); setError("");
     try {
