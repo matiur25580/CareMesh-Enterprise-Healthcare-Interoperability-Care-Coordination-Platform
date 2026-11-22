@@ -5,9 +5,11 @@ import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { PatientModel } from "../models/patient.model.js";
 import { CareGapModel } from "../models/care-gap.model.js";
+import { ConsentModel } from "../models/consent.model.js";
 import { MembershipModel } from "../models/membership.model.js";
 import { hasActiveConsent } from "../services/consent.service.js";
 import { recordAuditEvent } from "../services/audit.service.js";
+import { summarizeCareGapSla } from "../services/care-gap-sla.js";
 
 export const careGapsRouter = Router();
 careGapsRouter.use(authenticate);
@@ -50,6 +52,34 @@ async function patientAccess(req: Request, patientId: string): Promise<boolean> 
     purpose: "treatment"
   }));
 }
+
+// Aggregate operational SLA indicators only for patients with active treatment consent.
+careGapsRouter.get("/sla-summary", authorize("owner", "admin", "clinician", "coordinator", "analyst"), async (req, res, next) => {
+  try {
+    const now = new Date();
+    const consents = await ConsentModel.find({
+      organizationId: req.auth!.tenantId,
+      status: "active",
+      purposes: "treatment",
+      effectiveAt: { $lte: now },
+      revokedAt: null,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }]
+    }).distinct("patientId");
+    const patients = await PatientModel.find({
+      organizationId: req.auth!.tenantId,
+      status: "active",
+      _id: { $in: consents }
+    }).distinct("_id");
+    const gaps = await CareGapModel.find({
+      organizationId: req.auth!.tenantId,
+      patientId: { $in: patients }
+    }).select("status priority dueAt").sort({ dueAt: 1 }).limit(5001).lean();
+    const truncated = gaps.length > 5000;
+    const summary = summarizeCareGapSla(gaps.slice(0, 5000), now);
+    await audit(req, "care_gap.sla_summary.read", "organization");
+    res.json({ data: summary, meta: { truncated, scanned: Math.min(gaps.length, 5000), maxRecords: 5000 } });
+  } catch (error) { next(error); }
+});
 
 // Queue is always tenant-scoped and consent-gated per patient; no cross-tenant patient identifiers are exposed.
 careGapsRouter.get("/", authorize("owner", "admin", "clinician", "coordinator", "analyst"), async (req, res, next) => {
