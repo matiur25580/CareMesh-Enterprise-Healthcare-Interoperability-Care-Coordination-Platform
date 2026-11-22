@@ -240,7 +240,7 @@ patientsRouter.get("/:patientId/records", async (req, res, next) => {
       return;
     }
     if (!await hasActiveConsent({ organizationId: req.auth!.tenantId, patientId, purpose })) {
-      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "clinical_record.list", resourceType: "ClinicalRecord", resourceId: patientId, outcome: "denied", request: req });
+      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "clinical_record.list", resourceType: "ClinicalRecord", resourceId: patientId, purposeOfUse: purpose, outcome: "denied", request: req });
       res.status(403).json({ error: { code: "CONSENT_REQUIRED", message: "Active consent does not authorize this purpose of use." } });
       return;
     }
@@ -269,7 +269,7 @@ patientsRouter.post("/:patientId/records", authorize("owner", "admin", "clinicia
       return;
     }
     if (!await hasActiveConsent({ organizationId: req.auth!.tenantId, patientId, purpose })) {
-      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "clinical_record.create", resourceType: "ClinicalRecord", resourceId: patientId, outcome: "denied", request: req });
+      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "clinical_record.create", resourceType: "ClinicalRecord", resourceId: patientId, purposeOfUse: purpose, outcome: "denied", request: req });
       res.status(403).json({ error: { code: "CONSENT_REQUIRED", message: "Active consent does not authorize this purpose of use." } });
       return;
     }
