@@ -4,8 +4,6 @@
 
 > Connect authorized clinical context, care teams and patient journeys with privacy-aware coordination.
 
-![CareMesh illustrative dashboard](docs/assets/dashboard/01-clinical-command-center.svg)
-
 ## 1. Product overview
 
 CareMesh is an enterprise-oriented platform built around secure, auditable workflows and clear domain boundaries. It is developed incrementally as a modular application rather than presenting planned integrations as already operational.
