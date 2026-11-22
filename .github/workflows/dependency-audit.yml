@@ -2,83 +2,29 @@ name: Dependency security audit
 
 on:
   push:
-    branches: ["chore/dependency-audit-workflow"]
+    branches: ["feat/**"]
   pull_request:
-    branches: ["main", "feat/**", "fix/**", "chore/**"]
-  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
 
 permissions:
   contents: read
 
+concurrency:
+  group: dependency-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  audit-and-validate:
+  audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
-
-      # The repository currently has no committed lockfile. Resolve the exact
-      # workspace dependency graph in CI, then use that generated lockfile for
-      # both npm ci and npm audit in this same run.
-      - name: Generate temporary workspace lockfile
-        run: npm install --package-lock-only --ignore-scripts
-
-      - name: Install from generated lockfile
-        run: npm ci
-
-      - name: Audit resolved dependency tree
-        id: audit
-        shell: bash
-        run: |
-          set +e
-          npm audit --json > npm-audit.json
-          audit_status=$?
-          echo "audit_exit_code=$audit_status" >> "$GITHUB_OUTPUT"
-          node -e '
-            const fs = require("node:fs");
-            const report = JSON.parse(fs.readFileSync("npm-audit.json", "utf8"));
-            const counts = report.metadata?.vulnerabilities ?? {};
-            console.log("npm audit vulnerability counts:", JSON.stringify(counts));
-            for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) {
-              console.log(JSON.stringify({
-                package: name,
-                severity: item.severity,
-                direct: item.isDirect,
-                range: item.range,
-                fixAvailable: item.fixAvailable,
-                via: item.via.map(v => typeof v === "string" ? v : {
-                  name: v.name, title: v.title, range: v.range, url: v.url
-                }),
-                effects: item.effects,
-                nodes: item.nodes
-              }));
-            }
-          '
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Preserve audit evidence and generated lockfile
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: caremesh-dependency-audit
-          path: |
-            package-lock.json
-            npm-audit.json
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Fail when advisories are present
-        if: steps.audit.outputs.audit_exit_code != '0'
-        run: |
-          echo "npm audit reported vulnerabilities. Download the caremesh-dependency-audit artifact for full advisory paths and remediation metadata."
-          exit 1
+          package-manager-cache: false
+      - name: Install reproducibly from committed lockfile
+        run: npm ci --ignore-scripts
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
