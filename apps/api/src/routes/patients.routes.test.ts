@@ -113,7 +113,11 @@ describe("patient API integration", () => {
   });
 
   it("returns consent history scoped to the active organization and patient", async () => {
-    const consentRows = [{ _id: "64b000000000000000000020", purposes: ["treatment"], status: "active" }];
+    const consentRows = [
+      { _id: "64b000000000000000000020", purposes: ["treatment"], status: "active", effectiveAt: new Date("2026-11-01T00:00:00.000Z") },
+      { _id: "64b000000000000000000021", purposes: ["payment"], status: "active", effectiveAt: new Date("2026-12-01T00:00:00.000Z") },
+      { _id: "64b000000000000000000022", purposes: ["operations"], status: "active", effectiveAt: new Date("2026-01-01T00:00:00.000Z"), expiresAt: new Date("2026-11-01T00:00:00.000Z") }
+    ];
     consentFind.mockReturnValue({
       sort: vi.fn().mockReturnValue({
         limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(consentRows) })
@@ -123,7 +127,7 @@ describe("patient API integration", () => {
     const response = await request(app).get("/patients/64b000000000000000000010/consents");
 
     expect(response.status).toBe(200);
-    expect(response.body.data).toEqual(consentRows);
+    expect(response.body.data.map((consent: { authorizationState: string }) => consent.authorizationState)).toEqual(["active", "scheduled", "expired"]);
     expect(patientExists).toHaveBeenCalledWith({
       _id: "64b000000000000000000010",
       organizationId: "64b000000000000000000002"
