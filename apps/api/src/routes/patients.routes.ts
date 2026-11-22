@@ -88,7 +88,7 @@ patientsRouter.get("/", async (req, res, next) => {
 
 patientsRouter.get("/:patientId", async (req, res, next) => {
   try {
-    const patientId = routePatientId(patientId);
+    const patientId = routePatientId(req.params.patientId);
     if (!patientId || !objectId(patientId)) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
@@ -104,7 +104,8 @@ patientsRouter.get("/:patientId", async (req, res, next) => {
 
 patientsRouter.patch("/:patientId", authorize("owner", "admin", "clinician", "coordinator"), async (req, res, next) => {
   try {
-    if (!objectId(patientId)) {
+    const patientId = routePatientId(req.params.patientId);
+    if (!patientId || !objectId(patientId)) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
@@ -124,7 +125,8 @@ patientsRouter.patch("/:patientId", authorize("owner", "admin", "clinician", "co
 
 patientsRouter.get("/:patientId/records", async (req, res, next) => {
   try {
-    if (!objectId(patientId)) {
+    const patientId = routePatientId(req.params.patientId);
+    if (!patientId || !objectId(patientId)) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
@@ -133,14 +135,15 @@ patientsRouter.get("/:patientId/records", async (req, res, next) => {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
       return;
     }
-    const records = await ClinicalRecordModel.find({ patientId: patientId, organizationId: req.auth!.tenantId }).sort({ effectiveAt: -1 }).limit(100).lean();
+    const records = await ClinicalRecordModel.find({ patientId, organizationId: req.auth!.tenantId }).sort({ effectiveAt: -1 }).limit(100).lean();
     res.json({ data: records });
   } catch (error) { next(error); }
 });
 
 patientsRouter.post("/:patientId/records", authorize("owner", "admin", "clinician"), async (req, res, next) => {
   try {
-    if (!objectId(patientId)) {
+    const patientId = routePatientId(req.params.patientId);
+    if (!patientId || !objectId(patientId)) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
