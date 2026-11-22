@@ -114,15 +114,6 @@ patientsRouter.get("/:patientId", async (req, res, next) => {
       return;
     }
     await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
-    await auditPatientAction(req, "patient.update", "Patient", patientId);
     res.json({ data: patient });
   } catch (error) { next(error); }
 });
@@ -144,6 +135,7 @@ patientsRouter.patch("/:patientId", authorize("owner", "admin", "clinician", "co
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
       return;
     }
+    await auditPatientAction(req, "patient.update", "Patient", patientId);
     res.json({ data: patient });
   } catch (error) { next(error); }
 });
