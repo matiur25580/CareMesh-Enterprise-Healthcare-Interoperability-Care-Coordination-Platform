@@ -178,7 +178,7 @@ export default function PatientWorkspace() {
       });
       setShowRecord(false);
       setRecordForm({ resourceType: "condition", display: "", status: "active", effectiveAt: new Date().toISOString().slice(0, 10), note: "" });
-      const result = await request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records`, token);
+      const result = await request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records?purpose=treatment`, token);
       setRecords(result.data);
       setNotice("Clinical record added.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to add clinical record."); }
