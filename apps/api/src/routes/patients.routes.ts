@@ -91,6 +91,11 @@ patientsRouter.post("/:patientId/consents", authorize("owner", "admin", "clinici
       res.status(400).json({ error: { code: "PURPOSE_OF_USE_REQUIRED", message: "Specify purpose=treatment, payment, or operations." } });
       return;
     }
+    const purpose = parseConsentPurpose(req.query.purpose);
+    if (!purpose) {
+      res.status(400).json({ error: { code: "PURPOSE_OF_USE_REQUIRED", message: "Specify purpose=treatment, payment, or operations." } });
+      return;
+    }
     const patient = await PatientModel.exists({ _id: patientId, organizationId: req.auth!.tenantId });
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
