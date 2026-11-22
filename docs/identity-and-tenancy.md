@@ -7,7 +7,7 @@
 
 ## Session lifecycle
 - API access tokens are signed JWTs with a 15-minute lifetime and explicit issuer/audience.
-- Refresh tokens are opaque random values, stored only as SHA-256 hashes, rotated on refresh, and delivered in an HttpOnly, SameSite=Strict cookie.
+- Refresh tokens are opaque random values, stored only as SHA-256 hashes, rotated atomically on refresh, and delivered in an HttpOnly, SameSite=Strict cookie.
 - Logout revokes the matching server-side session. Protected requests verify both token claims and the live session record.
 - Production requires a unique high-entropy JWT_SECRET and HTTPS.
 
@@ -17,5 +17,8 @@
 - Resource queries must include the authenticated tenant identifier. Do not expose cross-tenant lookup endpoints.
 - RBAC middleware is a coarse permission gate; sensitive clinical operations must additionally evaluate consent, purpose of use, and resource-level policy.
 
+## Audit foundation
+Audit events are append-only by application convention and capture actor, organization, action, resource type, outcome, request correlation identifier, and timestamp. Do not place clinical payloads, secrets, or unnecessary patient identifiers in audit metadata. Restrict audit reads and writes to dedicated service paths.
+
 ## Current limitations
-This milestone provides registration, login, refresh/logout, identity introspection, organization listing/switching, and foundational role checks. Invitations, MFA/SSO, fine-grained ABAC, consent enforcement, audit persistence, and account recovery are future work. It is not a compliance certification.
+This milestone provides registration, login, refresh/logout, identity introspection, organization listing/switching, role middleware, and an audit-event persistence primitive. Invitations, MFA/SSO, fine-grained ABAC, consent enforcement, audit query APIs, and account recovery are future work. It is not a compliance certification.
