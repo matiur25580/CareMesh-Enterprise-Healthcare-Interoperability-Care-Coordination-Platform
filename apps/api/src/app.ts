@@ -7,15 +7,15 @@ import { logger } from "./config/logger.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRouter } from "./routes/health.routes.js";
 
-const require = createRequire(import.meta.url);
-const pinoHttp = require("pino-http") as typeof import("pino-http").default;
+const loadPinoHttp = createRequire(import.meta.url);
+const pinoHttpMiddleware = loadPinoHttp("pino-http") as typeof import("pino-http").default;
 
 export const app = express();
 app.disable("x-powered-by");
 app.use(helmet());
 app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
-app.use(pinoHttp({ logger }));
+app.use(pinoHttpMiddleware({ logger }));
 
 app.get("/", (_req, res) => {
   res.json({ name: "CareMesh API", version: "v1", docs: "API documentation is coming in a later milestone." });
