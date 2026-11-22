@@ -24,6 +24,27 @@ type ClinicalRecord = {
   note?: string;
 };
 type ApiError = { error?: { message?: string; code?: string } };
+type Consent = {
+  _id: string;
+  purposes: Array<"treatment" | "payment" | "operations">;
+  status: "active" | "revoked";
+  source: "patient" | "legal_representative" | "authorized_delegate" | "synthetic_test";
+  reference?: string;
+  effectiveAt: string;
+  expiresAt?: string;
+  createdAt: string;
+  revokedAt?: string;
+};
+class CareMeshApiError extends Error {
+  code?: string;
+  status: number;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "CareMeshApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
 
 async function request<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
   const send = (accessToken: string) => fetch(`${API_BASE}${path}`, {
@@ -42,7 +63,7 @@ async function request<T>(path: string, token: string, init: RequestInit = {}): 
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => ({})) as ApiError;
-    throw new Error(payload.error?.message ?? `Request failed (${response.status})`);
+    throw new CareMeshApiError(payload.error?.message ?? `Request failed (${response.status})`, response.status, payload.error?.code);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -70,6 +91,13 @@ export default function PatientWorkspace() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selected, setSelected] = useState<Patient | null>(null);
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
+  const [consents, setConsents] = useState<Consent[]>([]);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [recordAccessDenied, setRecordAccessDenied] = useState("");
+  const [showConsentGrant, setShowConsentGrant] = useState(false);
+  const [grantPurposes, setGrantPurposes] = useState<Array<"treatment" | "payment" | "operations">>(["treatment"]);
+  const [grantSource, setGrantSource] = useState<Consent["source"]>("patient");
+  const [grantReference, setGrantReference] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("active");
   const [loading, setLoading] = useState(false);
@@ -100,14 +128,29 @@ export default function PatientWorkspace() {
 
   useEffect(() => { void loadPatients(); }, [loadPatients]);
 
+  const loadConsents = useCallback(async (patientId: string) => {
+    setConsentLoading(true);
+    try {
+      const result = await request<{ data: Consent[] }>("/api/v1/patients/" + patientId + "/consents", token);
+      setConsents(result.data);
+    } finally { setConsentLoading(false); }
+  }, [token]);
+
   useEffect(() => {
-    if (!token || !selected) { setRecords([]); return; }
+    if (!token || !selected) { setRecords([]); setConsents([]); setRecordAccessDenied(""); return; }
     let cancelled = false;
-    request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records?purpose=treatment`, token)
+    setRecordAccessDenied("");
+    request<{ data: ClinicalRecord[] }>("/api/v1/patients/" + selected._id + "/records?purpose=treatment", token)
       .then(result => { if (!cancelled) setRecords(result.data); })
-      .catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load clinical history."); });
+      .catch(cause => {
+        if (!cancelled && cause instanceof CareMeshApiError && cause.code === "CONSENT_REQUIRED") {
+          setRecords([]);
+          setRecordAccessDenied("Clinical history is hidden because no active consent authorizes treatment. Review the consent history below or record valid consent before retrying.");
+        } else if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load clinical history.");
+      });
+    void loadConsents(selected._id).catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load consent history."); });
     return () => { cancelled = true; };
-  }, [token, selected]);
+  }, [token, selected, loadConsents]);
 
   const counts = useMemo(() => ({
     total: patients.length,
@@ -164,6 +207,46 @@ export default function PatientWorkspace() {
     finally { setSubmitting(false); }
   }
 
+  async function grantConsent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected || grantPurposes.length === 0) return;
+    setSubmitting(true); setError(""); setNotice("");
+    try {
+      await request("/api/v1/patients/" + selected._id + "/consents", token, {
+        method: "POST",
+        body: JSON.stringify({ purposes: grantPurposes, source: grantSource, ...(grantReference.trim() ? { reference: grantReference.trim() } : {}) })
+      });
+      setShowConsentGrant(false);
+      setGrantPurposes(["treatment"]); setGrantSource("patient"); setGrantReference("");
+      await loadConsents(selected._id);
+      setRecordAccessDenied("");
+      const result = await request<{ data: ClinicalRecord[] }>("/api/v1/patients/" + selected._id + "/records?purpose=treatment", token);
+      setRecords(result.data);
+      setNotice("Consent recorded. Treatment access was rechecked.");
+    } catch (cause) {
+      if (cause instanceof CareMeshApiError && cause.code === "CONSENT_REQUIRED") {
+        setRecords([]);
+        setRecordAccessDenied("Clinical history remains unavailable because active treatment consent is not present.");
+      } else setError(cause instanceof Error ? cause.message : "Unable to record consent.");
+    } finally { setSubmitting(false); }
+  }
+
+  async function revokeConsent(consent: Consent) {
+    if (!selected || consent.status !== "active") return;
+    if (!window.confirm("Revoke this consent? Future requests for its purposes will be denied.")) return;
+    setSubmitting(true); setError(""); setNotice("");
+    try {
+      const result = await request<{ data: Consent }>("/api/v1/patients/" + selected._id + "/consents/" + consent._id + "/revoke", token, { method: "POST" });
+      setConsents(current => current.map(item => item._id === consent._id ? result.data : item));
+      if (consent.purposes.includes("treatment")) {
+        setRecords([]);
+        setRecordAccessDenied("Treatment consent was revoked. Clinical history is now blocked for treatment purpose. Other purposes require their own active consent.");
+      }
+      setNotice("Consent revoked and the action recorded in the audit trail.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to revoke consent."); }
+    finally { setSubmitting(false); }
+  }
+
   async function createRecord(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
@@ -212,11 +295,11 @@ export default function PatientWorkspace() {
     {error && <div className="pw-alert"><AlertCircle size={16}/>{error}<button onClick={()=>setError("")} aria-label="Dismiss"><X size={14}/></button></div>}
     {notice && <div className="pw-notice"><Check size={15}/>{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss"><X size={14}/></button></div>}
     {selected ? <div className="pw-detail">
-      <button className="pw-back" onClick={()=>setSelected(null)}><ArrowLeft size={15}/> Back to patient registry</button>
+      <button className="pw-back" onClick={()=>{setSelected(null);void loadPatients();}}><ArrowLeft size={15}/> Back to patient registry</button>
       <div className="pw-patient-hero">
         <div className="pw-person-icon"><UserRound size={25}/></div>
         <div className="pw-person-title"><h2>{displayName(selected)}</h2><span>{selected.medicalRecordNumber} · {selected.status}</span></div>
-        <button className="pw-primary" onClick={()=>setShowRecord(true)}><FilePlus2 size={15}/> Add clinical record</button>
+        <div className="pw-heading-actions"><button className="pw-secondary" onClick={()=>setShowConsentGrant(true)}><ShieldCheck size={15}/> Add consent</button><button className="pw-primary" onClick={()=>setShowRecord(true)}><FilePlus2 size={15}/> Add clinical record</button></div>
       </div>
       <div className="pw-facts">
         <div><small>DATE OF BIRTH</small><b>{dateLabel(selected.birthDate)}</b></div>
@@ -224,6 +307,16 @@ export default function PatientWorkspace() {
         <div><small>ADMINISTRATIVE GENDER</small><b>{selected.administrativeGender}</b></div>
         <div><small>CONTACT</small><b>{selected.telecom?.email ?? selected.telecom?.phone ?? "Not provided"}</b></div>
       </div>
+      <section className="pw-consent-panel">
+        <div className="pw-section-head"><div><h3>Consent management</h3><p>Consent history and current authorization status for this patient</p></div><div className="pw-consent-head-actions"><span>{consents.length} entries</span><button className="pw-secondary" onClick={()=>void loadConsents(selected._id)} disabled={consentLoading}><Activity size={13}/> Refresh</button></div></div>
+        {recordAccessDenied && <div className="pw-consent-denied"><AlertCircle size={16}/><div><b>Clinical access denied</b><span>{recordAccessDenied}</span><small>Reason: CONSENT_REQUIRED · The API denied disclosure before returning clinical data.</small></div></div>}
+        {consentLoading ? <div className="pw-loading">Loading consent history…</div> : consents.length ? <div className="pw-consent-list">{consents.map(consent=><article className="pw-consent-row" key={consent._id}>
+          <div className="pw-consent-status"><span className={consent.status}>{consent.status}</span><small>{consent.purposes.join(" · ")}</small></div>
+          <div className="pw-consent-meta"><b>{consent.source.replaceAll("_"," ")}</b><span>Effective {dateLabel(consent.effectiveAt)}{consent.expiresAt ? " · Expires " + dateLabel(consent.expiresAt) : " · No expiry set"}</span>{consent.reference && <small>Reference: {consent.reference}</small>}{consent.revokedAt && <small>Revoked {dateLabel(consent.revokedAt)}</small>}</div>
+          {consent.status === "active" && <button className="pw-danger" disabled={submitting} onClick={()=>void revokeConsent(consent)}>Revoke</button>}
+        </article>)}</div> : <div className="pw-empty"><ShieldCheck size={22}/><b>No consent history</b><span>No consent records are available for this patient.</span></div>}
+        <div className="pw-consent-foot">Consent source is recorded as supplied by the operator. CareMesh does not independently verify identity, representative authority, or legal validity.</div>
+      </section>
       <div className="pw-section-head"><div><h3>Clinical history</h3><p>Records associated with this patient in the active organization</p></div><span>{records.length} records</span></div>
       <div className="pw-record-list">
         {records.length ? records.map(record=><article className="pw-record" key={record._id}><div className="pw-record-icon"><Activity size={17}/></div><div className="pw-record-content"><b>{record.code.display}</b><span>{record.resourceType.replaceAll("_"," ")} · {record.status}</span>{record.note && <p>{record.note}</p>}</div><time>{dateLabel(record.effectiveAt)}</time></article>) : <div className="pw-empty"><ClipboardList size={25}/><b>No clinical records yet</b><span>When authorized clinical information is added, it will appear here.</span></div>}
@@ -249,6 +342,7 @@ export default function PatientWorkspace() {
         <div className="pw-table-foot">Showing {patients.length} patient{patients.length===1?"":"s"} · Maximum 50 per request</div>
       </div>
     </>}
+    {showConsentGrant && selected && <div className="pw-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowConsentGrant(false);}}><section className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-consent-title"><div className="pw-modal-head"><div><h2 id="pw-consent-title">Record consent</h2><p>For {displayName(selected)} · {selected.medicalRecordNumber}</p></div><button onClick={()=>setShowConsentGrant(false)} aria-label="Close"><X size={18}/></button></div><form onSubmit={grantConsent} className="pw-form"><fieldset className="pw-consent-options"><legend>Authorized purposes</legend>{(["treatment","payment","operations"] as const).map(purpose=><label key={purpose}><input type="checkbox" checked={grantPurposes.includes(purpose)} onChange={e=>setGrantPurposes(current=>e.target.checked?[...current,purpose]:current.filter(item=>item!==purpose))}/>{purpose}</label>)}</fieldset><label>Consent evidence source<select required value={grantSource} onChange={e=>setGrantSource(e.target.value as Consent["source"])}><option value="patient">Patient</option><option value="legal_representative">Legal representative</option><option value="authorized_delegate">Authorized delegate</option><option value="synthetic_test">Synthetic test data</option></select></label><label>Evidence reference (optional)<input maxLength={120} value={grantReference} onChange={e=>setGrantReference(e.target.value)} placeholder="Internal reference or document ID"/></label><div className="pw-privacy"><ShieldCheck size={15}/> Recording consent does not verify the source or legal basis. Use synthetic data only in this demonstration environment.</div><div className="pw-modal-actions"><button type="button" className="pw-secondary" onClick={()=>setShowConsentGrant(false)}>Cancel</button><button className="pw-primary" disabled={submitting || grantPurposes.length===0}>{submitting?"Saving…":"Record consent"}</button></div></form></section></div>}
     {showCreate && <div className="pw-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowCreate(false);}}><section className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-create-title"><div className="pw-modal-head"><div><h2 id="pw-create-title">Register a patient</h2><p>Create a patient identity in your active organization.</p></div><button onClick={()=>setShowCreate(false)} aria-label="Close"><X size={18}/></button></div><form onSubmit={createPatient} className="pw-form"><div className="pw-form-grid"><label>Medical record number<input required maxLength={64} value={form.medicalRecordNumber} onChange={e=>setForm({...form,medicalRecordNumber:e.target.value})} placeholder="MRN-000123"/></label><label>Date of birth<input type="date" required value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/></label><label>Given name(s)<input required value={form.given} onChange={e=>setForm({...form,given:e.target.value})} placeholder="First and middle names"/></label><label>Family name<input required value={form.family} onChange={e=>setForm({...form,family:e.target.value})} placeholder="Family name"/></label><label>Administrative gender<select value={form.administrativeGender} onChange={e=>setForm({...form,administrativeGender:e.target.value})}><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label><label>Email address<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="Optional"/></label><label>Phone number<input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="Optional"/></label></div><label>Consent evidence source<select required value={form.consentSource} onChange={e=>setForm({...form,consentSource:e.target.value})}><option value="patient">Patient</option><option value="legal_representative">Legal representative</option><option value="authorized_delegate">Authorized delegate</option><option value="synthetic_test">Synthetic test data</option></select></label><label className="pw-full"><input type="checkbox" required checked={form.consentConfirmed} onChange={e=>setForm({...form,consentConfirmed:e.target.checked})}/> I confirm treatment consent has been documented for this synthetic/demo workflow.</label><div className="pw-privacy"><ShieldCheck size={15}/> Patient identity is scoped to the active organization. The selected consent source is recorded; this screen does not verify legal authority. Use synthetic data in development and demos.</div><div className="pw-modal-actions"><button type="button" className="pw-secondary" onClick={()=>setShowCreate(false)}>Cancel</button><button className="pw-primary" disabled={submitting}>{submitting?"Saving…":"Register patient"}</button></div></form></section></div>}
     {showRecord && selected && <div className="pw-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowRecord(false);}}><section className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-record-title"><div className="pw-modal-head"><div><h2 id="pw-record-title">Add clinical record</h2><p>For {displayName(selected)} · {selected.medicalRecordNumber}</p></div><button onClick={()=>setShowRecord(false)} aria-label="Close"><X size={18}/></button></div><form onSubmit={createRecord} className="pw-form"><div className="pw-form-grid"><label>Resource type<select value={recordForm.resourceType} onChange={e=>setRecordForm({...recordForm,resourceType:e.target.value})}><option value="condition">Condition</option><option value="allergy_intolerance">Allergy / intolerance</option><option value="medication_statement">Medication statement</option><option value="observation">Observation</option><option value="procedure">Procedure</option><option value="encounter">Encounter</option><option value="clinical_note">Clinical note</option></select></label><label>Effective date<input type="date" required value={recordForm.effectiveAt} onChange={e=>setRecordForm({...recordForm,effectiveAt:e.target.value})}/></label><label className="pw-full">Clinical concept / display<input required maxLength={240} value={recordForm.display} onChange={e=>setRecordForm({...recordForm,display:e.target.value})} placeholder="Enter a descriptive clinical concept"/></label><label>Status<select value={recordForm.status} onChange={e=>setRecordForm({...recordForm,status:e.target.value})}><option value="active">Active</option><option value="inactive">Inactive</option><option value="resolved">Resolved</option><option value="entered_in_error">Entered in error</option></select></label><label className="pw-full">Note (optional)<textarea maxLength={4000} rows={3} value={recordForm.note} onChange={e=>setRecordForm({...recordForm,note:e.target.value})} placeholder="Additional context"/></label></div><div className="pw-privacy"><ShieldCheck size={15}/> Only authorized clinical roles can create records. This is a basic record foundation, not a clinical decision tool.</div><div className="pw-modal-actions"><button type="button" className="pw-secondary" onClick={()=>setShowRecord(false)}>Cancel</button><button className="pw-primary" disabled={submitting}>{submitting?"Saving…":"Add record"}</button></div></form></section></div>}
     <div className="pw-disclaimer"><CalendarDays size={13}/> CareMesh patient workspace · Use synthetic data only · Not intended for clinical decision-making</div>
