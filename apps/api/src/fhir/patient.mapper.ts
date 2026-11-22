@@ -4,7 +4,7 @@ type CareMeshPatient = {
   _id: unknown;
   medicalRecordNumber: string;
   identifiers?: Array<{ system: string; value: string }>;
-  name: { given: string[]; family: string };
+  name?: { given: string[]; family: string } | null;
   birthDate: Date | string;
   administrativeGender: "female" | "male" | "other" | "unknown";
   telecom?: { email?: string; phone?: string };
@@ -13,6 +13,7 @@ type CareMeshPatient = {
 };
 
 export function mapCareMeshPatientToFhirR4(patient: CareMeshPatient): FhirR4Patient {
+  if (!patient.name || !Array.isArray(patient.name.given) || !patient.name.family) throw new Error("Patient name is invalid");
   const birthDate = new Date(patient.birthDate);
   if (Number.isNaN(birthDate.getTime())) throw new Error("Patient birthDate is invalid");
   const resource = {
