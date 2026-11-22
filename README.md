@@ -165,15 +165,15 @@ Care operations • Patient access • Care coordination. This concept view illu
 
 - Automated build, type-check and test workflows are maintained in GitHub Actions.
 - CodeQL and secret scanning provide static security and credential-leak checks.
-- Dependency auditing runs on pull requests and scheduled checks; review current results before release.
+- Dependency auditing runs against the committed lockfile on pull requests and scheduled checks. The latest feature-branch audit reports zero known vulnerabilities; continue monitoring for newly disclosed advisories.
 - Changes are developed on isolated feature branches and reviewed through draft pull requests.
 - Transaction-backed paths require MongoDB replica-set or sharded-cluster support.
 
 ## 10. Roadmap
 
 1. Complete tenant-boundary and authorization integration tests across domain routes.
-2. Commit and enforce reproducible package-manager lockfiles; use frozen installs in CI.
-3. Remediate remaining dependency advisories and keep automated audit gates green.
+2. Keep committed package-manager lockfiles current and preserve frozen installs in CI.
+3. Monitor newly disclosed dependency advisories and keep automated audit gates green.
 4. Pin third-party GitHub Actions to reviewed immutable commit SHAs.
 5. Expand API contract tests, browser end-to-end coverage and accessibility checks.
 6. Add observability runbooks, backup/restore validation and deployment hardening.
