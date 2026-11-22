@@ -3,7 +3,7 @@ import { fhirR4ObservationSchema, type FhirR4Observation } from "./observation.s
 type CareMeshObservationRecord = {
   _id: unknown;
   patientId: unknown;
-  code: { system?: string | null; value?: string | null; display: string };
+  code?: { system?: string | null; value?: string | null; display: string } | null;
   status: "active" | "inactive" | "resolved" | "entered_in_error";
   effectiveAt: Date | string;
   createdAt?: Date | string;
