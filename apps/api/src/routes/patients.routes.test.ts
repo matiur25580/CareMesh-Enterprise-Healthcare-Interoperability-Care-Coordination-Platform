@@ -26,7 +26,6 @@ vi.mock("../middleware/authenticate.js", () => ({
 }));
 
 vi.mock("../models/patient.model.js", () => ({ PatientModel: { findOne, create, exists: patientExists } }));
-s.viMocked;
 vi.mock("../models/clinical-record.model.js", () => ({ ClinicalRecordModel: {} }));
 vi.mock("../models/consent.model.js", () => ({ ConsentModel: { find: consentFind, findOneAndUpdate: consentFindOneAndUpdate, create: vi.fn(), distinct: vi.fn() }, CONSENT_PURPOSES: ["treatment", "payment", "operations"] }));
 vi.mock("../services/audit.service.js", () => ({ recordAuditEvent: auditEvent }));
@@ -112,4 +111,63 @@ describe("patient API integration", () => {
       organizationId: "64b000000000000000000002"
     }));
   });
+
+  it("returns consent history scoped to the active organization and patient", async () => {
+    const consentRows = [{ _id: "64b000000000000000000020", purposes: ["treatment"], status: "active" }];
+    consentFind.mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(consentRows) })
+      })
+    });
+
+    const response = await request(app).get("/patients/64b000000000000000000010/consents");
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual(consentRows);
+    expect(patientExists).toHaveBeenCalledWith({
+      _id: "64b000000000000000000010",
+      organizationId: "64b000000000000000000002"
+    });
+    expect(consentFind).toHaveBeenCalledWith({
+      patientId: "64b000000000000000000010",
+      organizationId: "64b000000000000000000002"
+    });
+    expect(auditEvent).toHaveBeenCalledWith(expect.objectContaining({
+      action: "consent.history.read",
+      resourceType: "Consent",
+      outcome: "success"
+    }));
+  });
+
+  it("does not disclose consent history for a patient outside the active organization", async () => {
+    patientExists.mockResolvedValue(null);
+
+    const response = await request(app).get("/patients/64b000000000000000000010/consents");
+
+    expect(response.status).toBe(404);
+    expect(consentFind).not.toHaveBeenCalled();
+  });
+
+  it("revokes only an active consent belonging to the patient and organization", async () => {
+    const revoked = { _id: "64b000000000000000000020", status: "revoked" };
+    consentFindOneAndUpdate.mockResolvedValue(revoked);
+
+    const response = await request(app)
+      .post("/patients/64b000000000000000000010/consents/64b000000000000000000020/revoke")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.status).toBe("revoked");
+    expect(consentFindOneAndUpdate).toHaveBeenCalledWith(
+      {
+        _id: "64b000000000000000000020",
+        patientId: "64b000000000000000000010",
+        organizationId: "64b000000000000000000002",
+        status: "active"
+      },
+      { $set: expect.objectContaining({ status: "revoked", revokedBy: "64b000000000000000000001" }) },
+      { new: true, runValidators: true }
+    );
+  });
+
 });
