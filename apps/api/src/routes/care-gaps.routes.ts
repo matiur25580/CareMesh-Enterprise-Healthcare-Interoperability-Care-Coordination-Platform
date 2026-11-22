@@ -13,7 +13,7 @@ export const careGapsRouter = Router();
 careGapsRouter.use(authenticate);
 
 const patientIdFrom = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
-const idSchema = z.string().regex(/^[a-f\\d]{24}$/i);
+const idSchema = z.string().regex(/^[a-f\d]{24}$/i);
 const createSchema = z.object({
   patientId: idSchema,
   category: z.enum(["screening", "medication_review", "follow_up", "care_plan", "preventive_care", "other"]),
