@@ -7,8 +7,8 @@ type CareMeshPatient = {
   name?: { given: string[]; family: string } | null;
   birthDate: Date | string;
   administrativeGender: "female" | "male" | "other" | "unknown";
-  telecom?: { email?: string; phone?: string };
-  address?: { line?: string[]; city?: string; region?: string; postalCode?: string; country?: string };
+  telecom?: { email?: string | null; phone?: string | null } | null;
+  address?: { line?: string[]; city?: string; region?: string; postalCode?: string; country?: string } | null;
   status: "active" | "inactive" | "merged";
 };
 
