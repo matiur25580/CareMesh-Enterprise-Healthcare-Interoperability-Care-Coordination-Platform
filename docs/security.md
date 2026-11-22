@@ -31,3 +31,8 @@ Consent grants are recorded through `POST /api/v1/patients/:patientId/consents`;
 Authorized owners, administrators, and clinicians can retrieve a patient's consent history through `GET /api/v1/patients/:patientId/consents`. The endpoint scopes both patient lookup and consent query to the authenticated organization, returns at most 50 newest records, and audits the history read. The patient workspace displays active/revoked status, purposes, source, effective/expiry dates, evidence reference, and revocation time. Authorized users can record additional consent or revoke an active consent. Revocation records the authenticated actor and is audited.
 
 When the clinical-record endpoint returns `CONSENT_REQUIRED`, the workspace displays an explicit access-denial explanation while keeping consent history available to the authorized operator. This is an operator workflow, not proof of patient authorization or legal sufficiency. Consent history is bounded to the latest 50 entries; no export, immutable ledger, patient self-service, or jurisdiction-specific legal review is included. Use synthetic data only.
+
+
+## Consent validity states
+
+Consent history now returns a derived `authorizationState` for each record: `active`, `scheduled`, `expired`, `revoked`, or `invalid`. The state is evaluated against the API response time and is separate from the persisted grant/revocation status. Future-dated consent is not yet effective; consent expires at the exact expiry instant; malformed dates fail closed as invalid. Clinical access enforcement continues to query only effective, unrevoked, unexpired consent. This is an operational display aid and does not determine legal validity.
