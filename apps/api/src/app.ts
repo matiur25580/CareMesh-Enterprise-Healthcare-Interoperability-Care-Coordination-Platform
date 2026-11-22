@@ -9,6 +9,7 @@ import { healthRouter } from "./routes/health.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { organizationsRouter } from "./routes/organizations.routes.js";
 import { patientsRouter } from "./routes/patients.routes.js";
+import { fhirRouter } from "./routes/fhir.routes.js";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -24,6 +25,7 @@ app.use("/api/v1/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/organizations", organizationsRouter);
 app.use("/api/v1/patients", patientsRouter);
+app.use("/api/v1/fhir/R4", fhirRouter);
 app.use((_req, res) => {
   res.status(404).json({ error: { code: "NOT_FOUND", message: "The requested resource was not found." } });
 });
