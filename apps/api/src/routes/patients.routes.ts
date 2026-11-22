@@ -35,13 +35,14 @@ const recordInput = z.object({
 const objectId = (value: string) => Types.ObjectId.isValid(value);
 const routePatientId = (value: string | string[] | undefined): string | undefined => Array.isArray(value) ? value[0] : value;
 
-async function auditPatientAction(req: Request, action: string, resourceType: string, resourceId?: string): Promise<void> {
+async function auditPatientAction(req: Request, action: string, resourceType: string, resourceId?: string, purposeOfUse?: "treatment" | "payment" | "operations"): Promise<void> {
   await recordAuditEvent({
     actorUserId: req.auth!.userId,
     organizationId: req.auth!.tenantId,
     action,
     resourceType,
     resourceId,
+    purposeOfUse,
     outcome: "success",
     request: req
   });
@@ -172,7 +173,7 @@ patientsRouter.get("/", async (req, res, next) => {
     const items = await PatientModel.find(filter).sort({ _id: -1 }).limit(query.limit + 1).lean();
     const hasMore = items.length > query.limit;
     const page = hasMore ? items.slice(0, query.limit) : items;
-    await auditPatientAction(req, "patient.search", "Patient");
+    await auditPatientAction(req, "patient.search", "Patient", undefined, purpose);
     res.json({ data: page, page: { hasMore, nextCursor: hasMore ? String(page[page.length - 1]?._id) : null } });
   } catch (error) { next(error); }
 });
@@ -195,11 +196,11 @@ patientsRouter.get("/:patientId", async (req, res, next) => {
       return;
     }
     if (!await hasActiveConsent({ organizationId: req.auth!.tenantId, patientId, purpose })) {
-      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "patient.read", resourceType: "Patient", resourceId: patientId, outcome: "denied", request: req });
+      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "patient.read", resourceType: "Patient", resourceId: patientId, purposeOfUse: purpose, outcome: "denied", request: req });
       res.status(403).json({ error: { code: "CONSENT_REQUIRED", message: "Active consent does not authorize this purpose of use." } });
       return;
     }
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
+    await auditPatientAction(req, "patient.read", "Patient", patientId, purpose);
     res.json({ data: patient });
   } catch (error) { next(error); }
 });
@@ -244,7 +245,7 @@ patientsRouter.get("/:patientId/records", async (req, res, next) => {
       return;
     }
     const records = await ClinicalRecordModel.find({ patientId, organizationId: req.auth!.tenantId }).sort({ effectiveAt: -1 }).limit(100).lean();
-    await auditPatientAction(req, "clinical_record.list", "ClinicalRecord", patientId);
+    await auditPatientAction(req, "clinical_record.list", "ClinicalRecord", patientId, purpose);
     res.json({ data: records });
   } catch (error) { next(error); }
 });
@@ -275,7 +276,7 @@ patientsRouter.post("/:patientId/records", authorize("owner", "admin", "clinicia
     const record = await ClinicalRecordModel.create({
       ...input, patientId: patientId, organizationId: req.auth!.tenantId, recordedBy: req.auth!.userId
     });
-    await auditPatientAction(req, "clinical_record.create", "ClinicalRecord", String(record._id));
+    await auditPatientAction(req, "clinical_record.create", "ClinicalRecord", String(record._id), purpose);
     res.status(201).json({ data: record });
   } catch (error) { next(error); }
 });
