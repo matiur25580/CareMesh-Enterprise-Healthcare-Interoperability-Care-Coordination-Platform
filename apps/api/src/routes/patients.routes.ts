@@ -7,7 +7,7 @@ import { PatientModel } from "../models/patient.model.js";
 import { ClinicalRecordModel } from "../models/clinical-record.model.js";
 import { recordAuditEvent } from "../services/audit.service.js";
 import { ConsentModel, CONSENT_PURPOSES } from "../models/consent.model.js";
-import { hasActiveConsent, parseConsentPurpose } from "../services/consent.service.js";
+import { getConsentAuthorizationState, hasActiveConsent, parseConsentPurpose } from "../services/consent.service.js";
 
 export const patientsRouter = Router();
 patientsRouter.use(authenticate);
@@ -124,7 +124,8 @@ patientsRouter.get("/:patientId/consents", authorize("owner", "admin", "clinicia
       organizationId: req.auth!.tenantId
     }).sort({ createdAt: -1, _id: -1 }).limit(50).lean();
     await auditPatientAction(req, "consent.history.read", "Consent", patientId);
-    res.json({ data: consents });
+    const now = new Date();
+    res.json({ data: consents.map((consent) => ({ ...consent, authorizationState: getConsentAuthorizationState(consent, now) })) });
   } catch (error) { next(error); }
 });
 

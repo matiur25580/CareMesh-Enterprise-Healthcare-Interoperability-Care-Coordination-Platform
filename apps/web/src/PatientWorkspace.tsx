@@ -28,6 +28,7 @@ type Consent = {
   _id: string;
   purposes: Array<"treatment" | "payment" | "operations">;
   status: "active" | "revoked";
+  authorizationState: "active" | "scheduled" | "expired" | "revoked" | "invalid";
   source: "patient" | "legal_representative" | "authorized_delegate" | "synthetic_test";
   reference?: string;
   effectiveAt: string;
@@ -311,9 +312,9 @@ export default function PatientWorkspace() {
         <div className="pw-section-head"><div><h3>Consent management</h3><p>Consent history and current authorization status for this patient</p></div><div className="pw-consent-head-actions"><span>{consents.length} entries</span><button className="pw-secondary" onClick={()=>void loadConsents(selected._id)} disabled={consentLoading}><Activity size={13}/> Refresh</button></div></div>
         {recordAccessDenied && <div className="pw-consent-denied"><AlertCircle size={16}/><div><b>Clinical access denied</b><span>{recordAccessDenied}</span><small>Reason: CONSENT_REQUIRED · The API denied disclosure before returning clinical data.</small></div></div>}
         {consentLoading ? <div className="pw-loading">Loading consent history…</div> : consents.length ? <div className="pw-consent-list">{consents.map(consent=><article className="pw-consent-row" key={consent._id}>
-          <div className="pw-consent-status"><span className={consent.status}>{consent.status}</span><small>{consent.purposes.join(" · ")}</small></div>
+          <div className="pw-consent-status"><span className={consent.authorizationState}>{consent.authorizationState === "scheduled" ? "scheduled" : consent.authorizationState}</span><small>{consent.purposes.join(" · ")}</small></div>
           <div className="pw-consent-meta"><b>{consent.source.replaceAll("_"," ")}</b><span>Effective {dateLabel(consent.effectiveAt)}{consent.expiresAt ? " · Expires " + dateLabel(consent.expiresAt) : " · No expiry set"}</span>{consent.reference && <small>Reference: {consent.reference}</small>}{consent.revokedAt && <small>Revoked {dateLabel(consent.revokedAt)}</small>}</div>
-          {consent.status === "active" && <button className="pw-danger" disabled={submitting} onClick={()=>void revokeConsent(consent)}>Revoke</button>}
+          {consent.status === "active" && consent.authorizationState !== "expired" && consent.authorizationState !== "invalid" && <button className="pw-danger" disabled={submitting} onClick={()=>void revokeConsent(consent)}>Revoke</button>}
         </article>)}</div> : <div className="pw-empty"><ShieldCheck size={22}/><b>No consent history</b><span>No consent records are available for this patient.</span></div>}
         <div className="pw-consent-foot">Consent source is recorded as supplied by the operator. CareMesh does not independently verify identity, representative authority, or legal validity.</div>
       </section>
