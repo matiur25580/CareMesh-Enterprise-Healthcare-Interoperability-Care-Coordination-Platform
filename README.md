@@ -52,3 +52,8 @@ npm run build
 ## Safety and compliance
 
 CareMesh is a software foundation, not a certified medical device or a claim of HIPAA, GDPR, or other regulatory compliance. Never use real patient information in development, demos, fixtures, or tests. Production deployment requires jurisdiction-specific legal, clinical-safety, privacy, and security review.
+
+
+## Consent and purpose-of-use
+
+Patient and clinical-record disclosure paths require an explicit purpose and an active matching consent. Consent grants and revocations are organization-scoped and audited. See [Security baseline](docs/security.md) for scope and limitations.

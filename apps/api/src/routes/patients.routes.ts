@@ -6,6 +6,8 @@ import { authorize } from "../middleware/authorize.js";
 import { PatientModel } from "../models/patient.model.js";
 import { ClinicalRecordModel } from "../models/clinical-record.model.js";
 import { recordAuditEvent } from "../services/audit.service.js";
+import { ConsentModel, CONSENT_PURPOSES } from "../models/consent.model.js";
+import { hasActiveConsent, parseConsentPurpose } from "../services/consent.service.js";
 
 export const patientsRouter = Router();
 patientsRouter.use(authenticate);
@@ -33,13 +35,14 @@ const recordInput = z.object({
 const objectId = (value: string) => Types.ObjectId.isValid(value);
 const routePatientId = (value: string | string[] | undefined): string | undefined => Array.isArray(value) ? value[0] : value;
 
-async function auditPatientAction(req: Request, action: string, resourceType: string, resourceId?: string): Promise<void> {
+async function auditPatientAction(req: Request, action: string, resourceType: string, resourceId?: string, purposeOfUse?: "treatment" | "payment" | "operations"): Promise<void> {
   await recordAuditEvent({
     actorUserId: req.auth!.userId,
     organizationId: req.auth!.tenantId,
     action,
     resourceType,
     resourceId,
+    purposeOfUse,
     outcome: "success",
     request: req
   });
@@ -67,6 +70,65 @@ patientsRouter.post("/", authorize("owner", "admin", "clinician", "coordinator")
   } catch (error) { next(error); }
 });
 
+patientsRouter.post("/:patientId/consents", authorize("owner", "admin", "clinician"), async (req, res, next) => {
+  try {
+    const patientId = routePatientId(req.params.patientId);
+    if (!patientId || !objectId(patientId)) {
+      res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
+      return;
+    }
+    const input = z.object({
+      purposes: z.array(z.enum(CONSENT_PURPOSES)).min(1).max(3),
+      source: z.enum(["patient", "legal_representative", "authorized_delegate", "synthetic_test"]),
+      reference: z.string().trim().max(120).optional(),
+      effectiveAt: z.coerce.date().optional(),
+      expiresAt: z.coerce.date().optional()
+    }).refine((value) => !value.expiresAt || !value.effectiveAt || value.expiresAt > value.effectiveAt, {
+      message: "Consent expiry must be later than its effective date."
+    }).parse(req.body);
+    const patient = await PatientModel.exists({ _id: patientId, organizationId: req.auth!.tenantId });
+    if (!patient) {
+      res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
+      return;
+    }
+    const consent = await ConsentModel.create({
+      organizationId: req.auth!.tenantId,
+      patientId,
+      purposes: [...new Set(input.purposes)],
+      source: input.source,
+      reference: input.reference,
+      effectiveAt: input.effectiveAt ?? new Date(),
+      expiresAt: input.expiresAt,
+      grantedBy: req.auth!.userId,
+      status: "active"
+    });
+    await auditPatientAction(req, "consent.grant", "Consent", String(consent._id));
+    res.status(201).json({ data: consent });
+  } catch (error) { next(error); }
+});
+
+patientsRouter.post("/:patientId/consents/:consentId/revoke", authorize("owner", "admin", "clinician"), async (req, res, next) => {
+  try {
+    const patientId = routePatientId(req.params.patientId);
+    const consentId = routePatientId(req.params.consentId);
+    if (!patientId || !objectId(patientId) || !consentId || !objectId(consentId)) {
+      res.status(400).json({ error: { code: "INVALID_CONSENT_ID", message: "The patient or consent identifier is invalid." } });
+      return;
+    }
+    const consent = await ConsentModel.findOneAndUpdate(
+      { _id: consentId, patientId, organizationId: req.auth!.tenantId, status: "active" },
+      { $set: { status: "revoked", revokedAt: new Date(), revokedBy: req.auth!.userId } },
+      { new: true, runValidators: true }
+    );
+    if (!consent) {
+      res.status(404).json({ error: { code: "ACTIVE_CONSENT_NOT_FOUND", message: "No active consent was found for this patient in the organization." } });
+      return;
+    }
+    await auditPatientAction(req, "consent.revoke", "Consent", consentId);
+    res.json({ data: consent });
+  } catch (error) { next(error); }
+});
+
 patientsRouter.get("/", async (req, res, next) => {
   try {
     const query = z.object({
@@ -75,7 +137,17 @@ patientsRouter.get("/", async (req, res, next) => {
       limit: z.coerce.number().int().min(1).max(100).default(25),
       cursor: z.string().optional()
     }).parse(req.query);
-    const filter: Record<string, unknown> = { organizationId: req.auth!.tenantId };
+    const purpose = parseConsentPurpose(req.query.purpose);
+    if (!purpose) {
+      res.status(400).json({ error: { code: "PURPOSE_OF_USE_REQUIRED", message: "Specify purpose=treatment, payment, or operations." } });
+      return;
+    }
+    const consentedPatientIds = await ConsentModel.distinct("patientId", {
+      organizationId: req.auth!.tenantId, status: "active", purposes: purpose,
+      effectiveAt: { $lte: new Date() }, revokedAt: null,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }]
+    });
+    const filter: Record<string, unknown> = { organizationId: req.auth!.tenantId, _id: { $in: consentedPatientIds } };
     if (query.status) filter.status = query.status;
     if (query.q) {
       const escaped = query.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -96,7 +168,7 @@ patientsRouter.get("/", async (req, res, next) => {
     const items = await PatientModel.find(filter).sort({ _id: -1 }).limit(query.limit + 1).lean();
     const hasMore = items.length > query.limit;
     const page = hasMore ? items.slice(0, query.limit) : items;
-    await auditPatientAction(req, "patient.search", "Patient");
+    await auditPatientAction(req, "patient.search", "Patient", undefined, purpose);
     res.json({ data: page, page: { hasMore, nextCursor: hasMore ? String(page[page.length - 1]?._id) : null } });
   } catch (error) { next(error); }
 });
@@ -108,12 +180,22 @@ patientsRouter.get("/:patientId", async (req, res, next) => {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
+    const purpose = parseConsentPurpose(req.query.purpose);
+    if (!purpose) {
+      res.status(400).json({ error: { code: "PURPOSE_OF_USE_REQUIRED", message: "Specify purpose=treatment, payment, or operations." } });
+      return;
+    }
     const patient = await PatientModel.findOne({ _id: patientId, organizationId: req.auth!.tenantId }).lean();
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
       return;
     }
-    await auditPatientAction(req, "patient.read", "Patient", patientId);
+    if (!await hasActiveConsent({ organizationId: req.auth!.tenantId, patientId, purpose })) {
+      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "patient.read", resourceType: "Patient", resourceId: patientId, purposeOfUse: purpose, outcome: "denied", request: req });
+      res.status(403).json({ error: { code: "CONSENT_REQUIRED", message: "Active consent does not authorize this purpose of use." } });
+      return;
+    }
+    await auditPatientAction(req, "patient.read", "Patient", patientId, purpose);
     res.json({ data: patient });
   } catch (error) { next(error); }
 });
@@ -147,13 +229,23 @@ patientsRouter.get("/:patientId/records", async (req, res, next) => {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
+    const purpose = parseConsentPurpose(req.query.purpose);
+    if (!purpose) {
+      res.status(400).json({ error: { code: "PURPOSE_OF_USE_REQUIRED", message: "Specify purpose=treatment, payment, or operations." } });
+      return;
+    }
     const patient = await PatientModel.exists({ _id: patientId, organizationId: req.auth!.tenantId });
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
       return;
     }
+    if (!await hasActiveConsent({ organizationId: req.auth!.tenantId, patientId, purpose })) {
+      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "clinical_record.list", resourceType: "ClinicalRecord", resourceId: patientId, purposeOfUse: purpose, outcome: "denied", request: req });
+      res.status(403).json({ error: { code: "CONSENT_REQUIRED", message: "Active consent does not authorize this purpose of use." } });
+      return;
+    }
     const records = await ClinicalRecordModel.find({ patientId, organizationId: req.auth!.tenantId }).sort({ effectiveAt: -1 }).limit(100).lean();
-    await auditPatientAction(req, "clinical_record.list", "ClinicalRecord", patientId);
+    await auditPatientAction(req, "clinical_record.list", "ClinicalRecord", patientId, purpose);
     res.json({ data: records });
   } catch (error) { next(error); }
 });
@@ -165,16 +257,26 @@ patientsRouter.post("/:patientId/records", authorize("owner", "admin", "clinicia
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
+    const purpose = parseConsentPurpose(req.body.purpose);
+    if (!purpose) {
+      res.status(400).json({ error: { code: "PURPOSE_OF_USE_REQUIRED", message: "Specify purpose=treatment, payment, or operations." } });
+      return;
+    }
     const input = recordInput.parse(req.body);
     const patient = await PatientModel.exists({ _id: patientId, organizationId: req.auth!.tenantId, status: "active" });
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The active patient was not found in this organization." } });
       return;
     }
+    if (!await hasActiveConsent({ organizationId: req.auth!.tenantId, patientId, purpose })) {
+      await recordAuditEvent({ actorUserId: req.auth!.userId, organizationId: req.auth!.tenantId, action: "clinical_record.create", resourceType: "ClinicalRecord", resourceId: patientId, purposeOfUse: purpose, outcome: "denied", request: req });
+      res.status(403).json({ error: { code: "CONSENT_REQUIRED", message: "Active consent does not authorize this purpose of use." } });
+      return;
+    }
     const record = await ClinicalRecordModel.create({
       ...input, patientId: patientId, organizationId: req.auth!.tenantId, recordedBy: req.auth!.userId
     });
-    await auditPatientAction(req, "clinical_record.create", "ClinicalRecord", String(record._id));
+    await auditPatientAction(req, "clinical_record.create", "ClinicalRecord", String(record._id), purpose);
     res.status(201).json({ data: record });
   } catch (error) { next(error); }
 });

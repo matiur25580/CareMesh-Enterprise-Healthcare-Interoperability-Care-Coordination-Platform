@@ -28,3 +28,10 @@ Every route requires an authenticated session. Queries include the verified tena
 ## Explicit limitations
 
 Consent and purpose-of-use enforcement, cross-tenant patient linking, FHIR R4 resource serialization, terminology validation, document storage, provenance history, record correction workflows, audit-event integration, and clinical safety review are not implemented by this milestone. Do not put real patient information into this system.
+
+
+## Consent and purpose-of-use foundation
+
+The patient API supports organization-scoped consent records with explicit purposes (`treatment`, `payment`, `operations`), effective/expiry dates, grant source, and revocation metadata. Patient search, patient detail, and clinical-record list requests require an explicit `purpose` query parameter; clinical-record creation requires `purpose` in the request body. Access is denied unless an active, unrevoked consent for that patient, organization, and purpose is effective at request time. Access audit events capture the declared purpose and denied checks.
+
+Consent grants are recorded through `POST /api/v1/patients/:patientId/consents`; revocation uses `POST /api/v1/patients/:patientId/consents/:consentId/revoke`. These endpoints are role-gated and retain the authenticated actor. This is an engineering foundation only: it does not establish legal authority, validate identity of the patient/representative, model jurisdiction-specific exceptions, emergency/break-glass access, granular data categories, or prove regulatory compliance. Use synthetic data only.

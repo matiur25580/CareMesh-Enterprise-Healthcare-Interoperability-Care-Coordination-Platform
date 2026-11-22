@@ -2,7 +2,7 @@ import type { Request } from "express";
 import { AuditEventModel } from "../models/audit-event.model.js";
 export async function recordAuditEvent(input: {
   actorUserId: string; organizationId: string; action: string; resourceType: string;
-  resourceId?: string; outcome: "success" | "denied"; request?: Request;
+  resourceId?: string; purposeOfUse?: "treatment" | "payment" | "operations"; outcome: "success" | "denied"; request?: Request;
 }): Promise<void> {
   await AuditEventModel.create({
     actorUserId: input.actorUserId,
@@ -11,6 +11,7 @@ export async function recordAuditEvent(input: {
     resourceType: input.resourceType,
     resourceId: input.resourceId,
     outcome: input.outcome,
-    requestId: input.request?.header("x-request-id")
+    requestId: input.request?.header("x-request-id"),
+    purposeOfUse: input.purposeOfUse
   });
 }

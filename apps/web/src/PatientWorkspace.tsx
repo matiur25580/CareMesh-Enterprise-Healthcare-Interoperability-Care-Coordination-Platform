@@ -78,7 +78,7 @@ export default function PatientWorkspace() {
   const [showCreate, setShowCreate] = useState(false);
   const [showRecord, setShowRecord] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ medicalRecordNumber: "", given: "", family: "", birthDate: "", administrativeGender: "unknown", email: "", phone: "" });
+  const [form, setForm] = useState({ medicalRecordNumber: "", given: "", family: "", birthDate: "", administrativeGender: "unknown", email: "", phone: "", consentSource: "patient", consentConfirmed: false });
   const [recordForm, setRecordForm] = useState({ resourceType: "condition", display: "", status: "active", effectiveAt: new Date().toISOString().slice(0, 10), note: "" });
 
   const loadPatients = useCallback(async () => {
@@ -90,6 +90,7 @@ export default function PatientWorkspace() {
       if (query.trim()) params.set("q", query.trim());
       if (status !== "all") params.set("status", status);
       params.set("limit", "50");
+      params.set("purpose", "treatment");
       const result = await request<{ data: Patient[] }>(`/api/v1/patients?${params.toString()}`, token);
       setPatients(result.data);
     } catch (cause) {
@@ -102,7 +103,7 @@ export default function PatientWorkspace() {
   useEffect(() => {
     if (!token || !selected) { setRecords([]); return; }
     let cancelled = false;
-    request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records`, token)
+    request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records?purpose=treatment`, token)
       .then(result => { if (!cancelled) setRecords(result.data); })
       .catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load clinical history."); });
     return () => { cancelled = true; };
@@ -141,7 +142,7 @@ export default function PatientWorkspace() {
   async function createPatient(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSubmitting(true); setError(""); setNotice("");
     try {
-      await request("/api/v1/patients", token, {
+      const created = await request<{ data: Patient }>("/api/v1/patients", token, {
         method: "POST",
         body: JSON.stringify({
           medicalRecordNumber: form.medicalRecordNumber,
@@ -151,9 +152,13 @@ export default function PatientWorkspace() {
           telecom: { ...(form.email ? { email: form.email } : {}), ...(form.phone ? { phone: form.phone } : {}) }
         })
       });
+      await request(`/api/v1/patients/${created.data._id}/consents`, token, {
+        method: "POST",
+        body: JSON.stringify({ purposes: ["treatment"], source: form.consentSource })
+      });
       setShowCreate(false);
-      setForm({ medicalRecordNumber: "", given: "", family: "", birthDate: "", administrativeGender: "unknown", email: "", phone: "" });
-      setNotice("Patient registered successfully.");
+      setForm({ medicalRecordNumber: "", given: "", family: "", birthDate: "", administrativeGender: "unknown", email: "", phone: "", consentSource: "patient", consentConfirmed: false });
+      setNotice("Patient registered and treatment consent recorded.");
       await loadPatients();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to register patient."); }
     finally { setSubmitting(false); }
@@ -167,6 +172,7 @@ export default function PatientWorkspace() {
       await request(`/api/v1/patients/${selected._id}/records`, token, {
         method: "POST",
         body: JSON.stringify({
+          purpose: "treatment",
           resourceType: recordForm.resourceType,
           code: { display: recordForm.display },
           status: recordForm.status,
@@ -176,7 +182,7 @@ export default function PatientWorkspace() {
       });
       setShowRecord(false);
       setRecordForm({ resourceType: "condition", display: "", status: "active", effectiveAt: new Date().toISOString().slice(0, 10), note: "" });
-      const result = await request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records`, token);
+      const result = await request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records?purpose=treatment`, token);
       setRecords(result.data);
       setNotice("Clinical record added.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to add clinical record."); }
@@ -243,7 +249,7 @@ export default function PatientWorkspace() {
         <div className="pw-table-foot">Showing {patients.length} patient{patients.length===1?"":"s"} · Maximum 50 per request</div>
       </div>
     </>}
-    {showCreate && <div className="pw-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowCreate(false);}}><section className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-create-title"><div className="pw-modal-head"><div><h2 id="pw-create-title">Register a patient</h2><p>Create a patient identity in your active organization.</p></div><button onClick={()=>setShowCreate(false)} aria-label="Close"><X size={18}/></button></div><form onSubmit={createPatient} className="pw-form"><div className="pw-form-grid"><label>Medical record number<input required maxLength={64} value={form.medicalRecordNumber} onChange={e=>setForm({...form,medicalRecordNumber:e.target.value})} placeholder="MRN-000123"/></label><label>Date of birth<input type="date" required value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/></label><label>Given name(s)<input required value={form.given} onChange={e=>setForm({...form,given:e.target.value})} placeholder="First and middle names"/></label><label>Family name<input required value={form.family} onChange={e=>setForm({...form,family:e.target.value})} placeholder="Family name"/></label><label>Administrative gender<select value={form.administrativeGender} onChange={e=>setForm({...form,administrativeGender:e.target.value})}><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label><label>Email address<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="Optional"/></label><label>Phone number<input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="Optional"/></label></div><div className="pw-privacy"><ShieldCheck size={15}/> Patient identity is scoped to the active organization. Use synthetic data in development and demos.</div><div className="pw-modal-actions"><button type="button" className="pw-secondary" onClick={()=>setShowCreate(false)}>Cancel</button><button className="pw-primary" disabled={submitting}>{submitting?"Saving…":"Register patient"}</button></div></form></section></div>}
+    {showCreate && <div className="pw-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowCreate(false);}}><section className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-create-title"><div className="pw-modal-head"><div><h2 id="pw-create-title">Register a patient</h2><p>Create a patient identity in your active organization.</p></div><button onClick={()=>setShowCreate(false)} aria-label="Close"><X size={18}/></button></div><form onSubmit={createPatient} className="pw-form"><div className="pw-form-grid"><label>Medical record number<input required maxLength={64} value={form.medicalRecordNumber} onChange={e=>setForm({...form,medicalRecordNumber:e.target.value})} placeholder="MRN-000123"/></label><label>Date of birth<input type="date" required value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/></label><label>Given name(s)<input required value={form.given} onChange={e=>setForm({...form,given:e.target.value})} placeholder="First and middle names"/></label><label>Family name<input required value={form.family} onChange={e=>setForm({...form,family:e.target.value})} placeholder="Family name"/></label><label>Administrative gender<select value={form.administrativeGender} onChange={e=>setForm({...form,administrativeGender:e.target.value})}><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label><label>Email address<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="Optional"/></label><label>Phone number<input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="Optional"/></label></div><label>Consent evidence source<select required value={form.consentSource} onChange={e=>setForm({...form,consentSource:e.target.value})}><option value="patient">Patient</option><option value="legal_representative">Legal representative</option><option value="authorized_delegate">Authorized delegate</option><option value="synthetic_test">Synthetic test data</option></select></label><label className="pw-full"><input type="checkbox" required checked={form.consentConfirmed} onChange={e=>setForm({...form,consentConfirmed:e.target.checked})}/> I confirm treatment consent has been documented for this synthetic/demo workflow.</label><div className="pw-privacy"><ShieldCheck size={15}/> Patient identity is scoped to the active organization. The selected consent source is recorded; this screen does not verify legal authority. Use synthetic data in development and demos.</div><div className="pw-modal-actions"><button type="button" className="pw-secondary" onClick={()=>setShowCreate(false)}>Cancel</button><button className="pw-primary" disabled={submitting}>{submitting?"Saving…":"Register patient"}</button></div></form></section></div>}
     {showRecord && selected && <div className="pw-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShowRecord(false);}}><section className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-record-title"><div className="pw-modal-head"><div><h2 id="pw-record-title">Add clinical record</h2><p>For {displayName(selected)} · {selected.medicalRecordNumber}</p></div><button onClick={()=>setShowRecord(false)} aria-label="Close"><X size={18}/></button></div><form onSubmit={createRecord} className="pw-form"><div className="pw-form-grid"><label>Resource type<select value={recordForm.resourceType} onChange={e=>setRecordForm({...recordForm,resourceType:e.target.value})}><option value="condition">Condition</option><option value="allergy_intolerance">Allergy / intolerance</option><option value="medication_statement">Medication statement</option><option value="observation">Observation</option><option value="procedure">Procedure</option><option value="encounter">Encounter</option><option value="clinical_note">Clinical note</option></select></label><label>Effective date<input type="date" required value={recordForm.effectiveAt} onChange={e=>setRecordForm({...recordForm,effectiveAt:e.target.value})}/></label><label className="pw-full">Clinical concept / display<input required maxLength={240} value={recordForm.display} onChange={e=>setRecordForm({...recordForm,display:e.target.value})} placeholder="Enter a descriptive clinical concept"/></label><label>Status<select value={recordForm.status} onChange={e=>setRecordForm({...recordForm,status:e.target.value})}><option value="active">Active</option><option value="inactive">Inactive</option><option value="resolved">Resolved</option><option value="entered_in_error">Entered in error</option></select></label><label className="pw-full">Note (optional)<textarea maxLength={4000} rows={3} value={recordForm.note} onChange={e=>setRecordForm({...recordForm,note:e.target.value})} placeholder="Additional context"/></label></div><div className="pw-privacy"><ShieldCheck size={15}/> Only authorized clinical roles can create records. This is a basic record foundation, not a clinical decision tool.</div><div className="pw-modal-actions"><button type="button" className="pw-secondary" onClick={()=>setShowRecord(false)}>Cancel</button><button className="pw-primary" disabled={submitting}>{submitting?"Saving…":"Add record"}</button></div></form></section></div>}
     <div className="pw-disclaimer"><CalendarDays size={13}/> CareMesh patient workspace · Use synthetic data only · Not intended for clinical decision-making</div>
   </section>;
