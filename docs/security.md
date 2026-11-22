@@ -7,8 +7,13 @@ This document describes engineering guardrails, not a compliance certification.
 - Use TLS and managed encryption at rest; keep secrets outside source control and rotate keys.
 - Apply request-size limits, rate limits, secure headers, and strict CORS allowlists.
 - Redact tokens, identifiers, and clinical content from logs and telemetry.
-- Record append-only audit events for access and administrative actions.
+- Record organization-scoped audit events for successful patient and clinical-record reads, searches, creation, and updates; include actor, action, resource reference, outcome, timestamp, and request correlation ID without copying clinical payloads into the audit record.
 - Scan uploads, validate content types, and store files outside the web root.
 - Define retention, deletion, backup, restore, and incident-response procedures.
 
 Use synthetic data only. Before handling real health information, complete threat modeling, penetration testing, privacy/legal assessment, recovery testing, and applicable jurisdictional compliance work.
+
+
+## Audit coverage and limitations
+
+The current patient API emits success audit events for patient search/read/create/update and clinical-record list/create operations. Audit persistence is awaited before the API returns the protected response. The current slice does not yet record denied authorization attempts, authentication events, organization administration, exports, or background integration access. It is an application-level audit foundation, not a tamper-proof or compliance-certified audit system; database-level immutability, retention controls, export, and independent monitoring remain future work.
