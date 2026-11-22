@@ -107,6 +107,27 @@ patientsRouter.post("/:patientId/consents", authorize("owner", "admin", "clinici
   } catch (error) { next(error); }
 });
 
+patientsRouter.get("/:patientId/consents", authorize("owner", "admin", "clinician"), async (req, res, next) => {
+  try {
+    const patientId = routePatientId(req.params.patientId);
+    if (!patientId || !objectId(patientId)) {
+      res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
+      return;
+    }
+    const patient = await PatientModel.exists({ _id: patientId, organizationId: req.auth!.tenantId });
+    if (!patient) {
+      res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
+      return;
+    }
+    const consents = await ConsentModel.find({
+      patientId,
+      organizationId: req.auth!.tenantId
+    }).sort({ createdAt: -1, _id: -1 }).limit(50).lean();
+    await auditPatientAction(req, "consent.history.read", "Consent", patientId);
+    res.json({ data: consents });
+  } catch (error) { next(error); }
+});
+
 patientsRouter.post("/:patientId/consents/:consentId/revoke", authorize("owner", "admin", "clinician"), async (req, res, next) => {
   try {
     const patientId = routePatientId(req.params.patientId);
