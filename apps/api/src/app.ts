@@ -12,6 +12,7 @@ import { patientsRouter } from "./routes/patients.routes.js";
 import { fhirRouter } from "./routes/fhir.routes.js";
 import { fhirObservationsRouter } from "./routes/fhir-observations.routes.js";
 import { fhirConditionsRouter } from "./routes/fhir-conditions.routes.js";
+import { careGapsRouter } from "./routes/care-gaps.routes.js";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -27,6 +28,7 @@ app.use("/api/v1/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/organizations", organizationsRouter);
 app.use("/api/v1/patients", patientsRouter);
+app.use("/api/v1/care-gaps", careGapsRouter);
 app.use("/api/v1/fhir/R4", fhirRouter);
 app.use("/api/v1/fhir/R4", fhirObservationsRouter);
 app.use("/api/v1/fhir/R4", fhirConditionsRouter);
