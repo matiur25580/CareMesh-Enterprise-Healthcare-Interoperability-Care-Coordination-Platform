@@ -87,11 +87,11 @@ patientsRouter.get("/", async (req, res, next) => {
 
 patientsRouter.get("/:patientId", async (req, res, next) => {
   try {
-    if (!objectId(req.params.patientId)) {
+    if (!objectId(String(req.params.patientId))) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
-    const patient = await PatientModel.findOne({ _id: req.params.patientId, organizationId: req.auth!.tenantId }).lean();
+    const patient = await PatientModel.findOne({ _id: String(req.params.patientId), organizationId: req.auth!.tenantId }).lean();
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
       return;
@@ -102,13 +102,13 @@ patientsRouter.get("/:patientId", async (req, res, next) => {
 
 patientsRouter.patch("/:patientId", authorize("owner", "admin", "clinician", "coordinator"), async (req, res, next) => {
   try {
-    if (!objectId(req.params.patientId)) {
+    if (!objectId(String(req.params.patientId))) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
     const changes = patientInput.partial().omit({ medicalRecordNumber: true }).parse(req.body);
     const patient = await PatientModel.findOneAndUpdate(
-      { _id: req.params.patientId, organizationId: req.auth!.tenantId },
+      { _id: String(req.params.patientId), organizationId: req.auth!.tenantId },
       { $set: { ...changes, updatedBy: req.auth!.userId } },
       { new: true, runValidators: true }
     );
@@ -122,34 +122,34 @@ patientsRouter.patch("/:patientId", authorize("owner", "admin", "clinician", "co
 
 patientsRouter.get("/:patientId/records", async (req, res, next) => {
   try {
-    if (!objectId(req.params.patientId)) {
+    if (!objectId(String(req.params.patientId))) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
-    const patient = await PatientModel.exists({ _id: req.params.patientId, organizationId: req.auth!.tenantId });
+    const patient = await PatientModel.exists({ _id: String(req.params.patientId), organizationId: req.auth!.tenantId });
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The patient was not found in the active organization." } });
       return;
     }
-    const records = await ClinicalRecordModel.find({ patientId: req.params.patientId, organizationId: req.auth!.tenantId }).sort({ effectiveAt: -1 }).limit(100).lean();
+    const records = await ClinicalRecordModel.find({ patientId: String(req.params.patientId), organizationId: req.auth!.tenantId }).sort({ effectiveAt: -1 }).limit(100).lean();
     res.json({ data: records });
   } catch (error) { next(error); }
 });
 
 patientsRouter.post("/:patientId/records", authorize("owner", "admin", "clinician"), async (req, res, next) => {
   try {
-    if (!objectId(req.params.patientId)) {
+    if (!objectId(String(req.params.patientId))) {
       res.status(400).json({ error: { code: "INVALID_PATIENT_ID", message: "The patient identifier is invalid." } });
       return;
     }
     const input = recordInput.parse(req.body);
-    const patient = await PatientModel.exists({ _id: req.params.patientId, organizationId: req.auth!.tenantId, status: "active" });
+    const patient = await PatientModel.exists({ _id: String(req.params.patientId), organizationId: req.auth!.tenantId, status: "active" });
     if (!patient) {
       res.status(404).json({ error: { code: "PATIENT_NOT_FOUND", message: "The active patient was not found in this organization." } });
       return;
     }
     const record = await ClinicalRecordModel.create({
-      ...input, patientId: req.params.patientId, organizationId: req.auth!.tenantId, recordedBy: req.auth!.userId
+      ...input, patientId: String(req.params.patientId), organizationId: req.auth!.tenantId, recordedBy: req.auth!.userId
     });
     res.status(201).json({ data: record });
   } catch (error) { next(error); }
