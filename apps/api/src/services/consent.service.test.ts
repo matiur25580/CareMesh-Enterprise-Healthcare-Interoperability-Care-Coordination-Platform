@@ -6,7 +6,7 @@ vi.mock("../models/consent.model.js", () => ({
   CONSENT_PURPOSES: ["treatment", "payment", "operations"]
 }));
 
-import { hasActiveConsent, parseConsentPurpose } from "./consent.service.js";
+import { getConsentAuthorizationState, hasActiveConsent, parseConsentPurpose } from "./consent.service.js";
 
 describe("consent purpose evaluation", () => {
   beforeEach(() => {
@@ -50,5 +50,29 @@ describe("consent purpose evaluation", () => {
       patientId: "patient-id",
       purpose: "payment"
     })).resolves.toBe(false);
+  });
+});
+
+describe("consent authorization state", () => {
+  const now = new Date("2026-11-22T12:00:00.000Z");
+
+  it("classifies valid consent as active", () => {
+    expect(getConsentAuthorizationState({ status: "active", effectiveAt: "2026-11-01T00:00:00.000Z" }, now)).toBe("active");
+  });
+
+  it("classifies future-dated consent as scheduled", () => {
+    expect(getConsentAuthorizationState({ status: "active", effectiveAt: "2026-12-01T00:00:00.000Z" }, now)).toBe("scheduled");
+  });
+
+  it("classifies consent expiring at the current instant as expired", () => {
+    expect(getConsentAuthorizationState({ status: "active", effectiveAt: "2026-11-01T00:00:00.000Z", expiresAt: now }, now)).toBe("expired");
+  });
+
+  it("preserves revocation as the highest-priority state", () => {
+    expect(getConsentAuthorizationState({ status: "revoked", effectiveAt: "2026-11-01T00:00:00.000Z" }, now)).toBe("revoked");
+  });
+
+  it("fails closed for invalid consent dates", () => {
+    expect(getConsentAuthorizationState({ status: "active", effectiveAt: "not-a-date" }, now)).toBe("invalid");
   });
 });
