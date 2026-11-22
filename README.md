@@ -56,7 +56,7 @@ docs/                  Architecture, security, product and runbooks
 ### Install and run
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
