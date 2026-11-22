@@ -2,148 +2,135 @@
 
 **Enterprise Healthcare Interoperability & Care Coordination Platform**
 
-> Connect authorized clinical context, care teams and patient journeys through privacy-aware, auditable workflows.
+> A privacy-first foundation for trusted health information exchange and coordinated care across authorized organizations.
 
-CareMesh is a modular healthcare platform project focused on tenant-aware clinical workflows, consent and purpose-of-use governance, FHIR-oriented interoperability, and accountable care coordination.
+[![CI](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions)](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions)
 
-## 1. Project status
+## 1. Product vision
 
-**Main branch: engineering foundation.** Feature work is developed in stacked pull requests and should be treated as in progress until merged into main. This is a portfolio engineering project—not a clinical system, certified health IT product, or production exchange network.
+CareMesh is being developed to connect healthcare organizations through consent-aware information exchange, accountable care coordination and standards-based interoperability. It aims to reduce fragmented handoffs while preserving patient privacy, organizational boundaries and attributable access.
 
-- Foundation and engineering guardrails: repository baseline.
-- Consent-aware FHIR Patient, Observation and Condition exchange: active feature-branch work.
-- Care-gap coordination, SLA reporting and clinical audit: feature-branch work.
-- External partner certification, terminology conformance and production integrations: not claimed.
+## 2. Project status and responsible use
 
-Use synthetic data only. Never upload real patient information, PHI, credentials or production exports.
+**Status: active portfolio development; not a production clinical system.** The repository contains foundation and milestone work, but the default branch and each feature branch may differ. The dashboard gallery below is illustrative and does not prove that every depicted workflow is implemented.
 
-## 2. Product problem and value
+- Do not use this project to make clinical decisions or coordinate real patient care.
+- Do not upload real patient information, PHI, credentials or production exports.
+- No regulatory compliance, clinical validation, security certification or FHIR conformance is claimed.
+- Use synthetic data exclusively for development and demonstrations.
 
-Clinical context is fragmented across organizations and systems. CareMesh explores safer, more useful exchange through organization-scoped patient context, explicit consent and purpose checks, bounded FHIR resource mapping, care-gap follow-up, referrals, attributable audit evidence and integration health.
+## 3. Product domains
 
-## 3. Capability map
+- **Organization trust:** provider directory, facilities and explicit inter-organization relationships.
+- **Identity and access:** authenticated identity, role-aware permissions and tenant isolation.
+- **Patient identity:** identity resolution and carefully governed record discovery.
+- **Consent and purpose:** consent lifecycle, permitted purpose, validity windows and authorization decisions.
+- **Interoperability:** versioned FHIR-oriented exchange contracts and validated adapters.
+- **Care coordination:** referrals, care gaps, tasks and accountable handoffs.
+- **Audit and provenance:** attributable access events, change history and evidence references.
+- **Operations:** data-quality monitoring, integration health and operational metrics.
 
-| Domain | Capability direction | Delivery boundary |
-| --- | --- | --- |
-| Identity & tenancy | Organization membership and role-scoped access | Server-side authorization required |
-| Patient context | Patient identity and longitudinal record | Synthetic data only |
-| Consent governance | Purpose-aware access and expiry checks | Not a legal consent determination |
-| FHIR interoperability | Read-only R4 Patient, Observation and Condition slices | Partial subsets; not full conformance |
-| Care coordination | Care gaps, follow-up queue and SLA signals | Operational workflow foundation |
-| Audit & provenance | Actor, purpose, resource and correlation metadata | Avoid PHI in audit payloads |
-| Integrations | Partner adapters, retries and delivery monitoring | No partner certification claimed |
+These domains describe the product direction; implementation status should be verified against the relevant source code, tests and release branch.
 
-## 4. Technology and architecture
+## 4. Architecture and engineering principles
 
-TypeScript monorepo direction: React/Vite web, Node.js/Express API, MongoDB/Mongoose persistence, Zod/shared contracts, automated tests and GitHub Actions.
+1. Deny by default; enforce authorization on the server for every protected resource.
+2. Derive tenant and organization context from trusted authentication, never from client-supplied identifiers alone.
+3. Apply consent and purpose-of-use checks at the service boundary.
+4. Minimize sensitive data in logs, traces, analytics and error responses.
+5. Validate external messages and preserve source provenance.
+6. Make retries bounded and idempotent where exchange operations require them.
+7. Use synthetic fixtures and test data; never commit PHI.
+8. Keep interoperability adapters behind explicit contracts and version boundaries.
 
-1. Derive tenant context from authenticated server-side identity.
-2. Deny access by default and authorize every protected resource.
-3. Enforce consent and purpose before disclosure.
-4. Bound pagination, query size and FHIR Bundle responses.
-5. Preserve provenance and audit sensitive access decisions.
-6. Separate UI permissions from API authorization.
-7. Treat external payloads as untrusted input.
+## 5. Technology and repository orientation
 
-## 5. Local development
+The platform is organized around a TypeScript web/API architecture, with healthcare domain services, persistence, shared contracts and documentation. Refer to the package manifests and architecture documents on the branch being used for the exact dependency versions and runnable commands.
 
-Prerequisites: Node.js 22+, npm 10+, Docker and local MongoDB.
+Common areas include `apps/api`, `apps/web`, `packages`, `docs` and `.github/workflows` where present.
 
-    npm ci
-    npm run dev
-    npm run typecheck
-    npm test
-    npm run build
+## 6. Local development
 
-Configure local environment files from .env.example templates. Never commit secrets. Use synthetic fixtures only; follow the selected branch's app-level setup guide.
+1. Install the Node.js and package-manager versions declared by the repository.
+2. Review the available `.env.example` files and configure local-only values.
+3. Start the local database and identity dependencies documented for the selected milestone.
+4. Install dependencies using the committed lockfile and the package manager specified by the workspace.
+5. Run the scripts declared in the root and application `package.json` files.
 
-## 6. Security, privacy and responsible use
+Never place production secrets in environment files committed to Git. If a command is not defined by the checked-out branch, do not assume it exists.
 
-- No real patient data in development, CI, screenshots or demos.
-- No claim of HIPAA, GDPR, ONC certification, TEFCA participation or FHIR conformance.
-- Consent logic is application authorization support, not legal advice or proof of lawful basis.
-- Use minimum-necessary data, strict tenant scoping, explicit purpose and attributable audit events.
-- Production use requires jurisdiction-specific legal review, clinical safety assessment, threat modelling, penetration testing, disaster recovery and partner conformance testing.
+## 7. Quality, security and delivery
 
-## 7. Standards-aware roadmap
-
-- FHIR R4 validation and profile-aware exchange with explicit versioning.
-- US Core profile mapping and terminology-service integration where relevant.
-- SMART on FHIR / OAuth 2.0 patterns and least-privilege scopes.
-- Idempotent integration jobs, retry/dead-letter handling and delivery observability.
-- Consent lifecycle history, revocation propagation and auditable purpose decisions.
-- Accessibility, end-to-end testing and operational runbooks.
-
-Reference: [ONC 2026 approved SVAP standards](https://healthit.gov/blog/standards/advancements-in-health-it-oncs-2026-approved-svap-standards/) includes USCDI v6 and updated FHIR-based Da Vinci implementation guides. This is a roadmap reference, not a certification claim.
+- Run type checking, unit/integration tests and production builds before proposing a merge.
+- Test tenant isolation, consent denial, purpose mismatch, expired consent and audit attribution.
+- Use CodeQL, secret scanning and dependency auditing in CI where configured.
+- Review workflow permissions, dependency pinning and artifact provenance.
+- Maintain threat models, data-retention decisions, backup/restore procedures and incident response guidance as the system matures.
 
 ## 8. Illustrative dashboard gallery
 
-The 12 visuals below are **illustrative SVG dashboard concepts**, not screenshots from a running production system. All values and activity are synthetic. The single-column sequence communicates the intended operator experience; it does not prove that every depicted module is implemented.
+The 12 SVGs are **illustrative dashboard concepts**, not screenshots from a running product. Every value is synthetic. The single-column presentation is intended for readable full-width review.
 
-### 01. Clinical Operations Center
-Care-team workload, active care gaps and operational exceptions.
+### 01 — Care coordination command center
+A high-level view of cross-organization care activity, open handoffs and operational signals.
+![CareMesh care coordination command center](docs/assets/dashboard/01-care-coordination-command-center.svg)
 
-![CareMesh Clinical Operations Center](docs/assets/dashboard/01-clinical-operations-center.svg)
+### 02 — Patient identity resolution
+A concept for identity-match review, confidence indicators and careful duplicate-resolution workflows.
+![CareMesh patient identity resolution](docs/assets/dashboard/02-patient-identity-resolution.svg)
 
-### 02. Patient Longitudinal Record
-Consent-aware encounters, conditions, observations and source provenance.
+### 03 — Consent and purpose governance
+A view of consent state, permitted purposes, expiry windows and review exceptions.
+![CareMesh consent and purpose governance](docs/assets/dashboard/03-consent-purpose-dashboard.svg)
 
-![CareMesh Patient Longitudinal Record](docs/assets/dashboard/02-patient-longitudinal-record.svg)
+### 04 — FHIR interoperability hub
+A conceptual exchange monitor for resource validation, partner endpoints and integration outcomes.
+![CareMesh FHIR interoperability hub](docs/assets/dashboard/04-fhir-interoperability-hub.svg)
 
-### 03. FHIR Interoperability Hub
-Resource throughput, validation outcomes and partner endpoint health.
+### 05 — Referral management workspace
+A workflow concept for referral ownership, receiving organizations and handoff progress.
+![CareMesh referral management workspace](docs/assets/dashboard/05-referral-management-workspace.svg)
 
-![CareMesh FHIR Interoperability Hub](docs/assets/dashboard/03-fhir-interoperability-hub.svg)
+### 06 — Clinical access audit
+An attributable event view for sensitive-record access, policy decisions and audit review.
+![CareMesh clinical access audit](docs/assets/dashboard/06-clinical-access-audit.svg)
 
-### 04. Consent & Purpose Controls
-Active grants, expiry monitoring, purpose policies and access decisions.
+### 07 — Care gap intelligence
+A synthetic prioritization view for care gaps and follow-up coordination.
+![CareMesh care gap intelligence](docs/assets/dashboard/07-care-gap-intelligence.svg)
 
-![CareMesh Consent & Purpose Controls](docs/assets/dashboard/04-consent-purpose-controls.svg)
+### 08 — Organization trust network
+A view of provider relationships, exchange permissions and partner readiness.
+![CareMesh organization trust network](docs/assets/dashboard/08-organization-trust-network.svg)
 
-### 05. Care-Gap Follow-up Queue
-Prioritized overdue gaps, ownership, due dates and follow-up accountability.
+### 09 — Patient record timeline
+A synthetic timeline concept for encounters, observations and transitions of care.
+![CareMesh patient record timeline](docs/assets/dashboard/09-patient-record-timeline.svg)
 
-![CareMesh Care-Gap Follow-up Queue](docs/assets/dashboard/05-care-gap-follow-up-queue.svg)
+### 10 — Interoperability data quality
+A quality workspace for validation exceptions, terminology mapping and completeness signals.
+![CareMesh interoperability data quality](docs/assets/dashboard/10-data-quality-monitor.svg)
 
-### 06. SLA & Quality Intelligence
-Timeliness, escalation patterns and care coordination service levels.
+### 11 — Security and privacy operations
+A governance view for access anomalies, consent exceptions and privacy review status.
+![CareMesh security and privacy operations](docs/assets/dashboard/11-security-operations-center.svg)
 
-![CareMesh SLA & Quality Intelligence](docs/assets/dashboard/06-sla-quality-intelligence.svg)
+### 12 — Referral performance analytics
+A reporting concept for referral turnaround, closure rates and cross-organization performance.
+![CareMesh referral performance analytics](docs/assets/dashboard/12-referral-performance-analytics.svg)
 
-### 07. Referral Coordination
-Closed-loop referral intake, handoff status, partner response and completion.
+## 9. Documentation and contribution
 
-![CareMesh Referral Coordination](docs/assets/dashboard/07-referral-coordination.svg)
+Start with the architecture and security documentation under `docs/`, then review [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Keep pull requests focused, tested and explicit about implementation status and limitations.
 
-### 08. Clinical Observation Review
-Observation trends, out-of-range signals and source context.
+## 10. Roadmap themes
 
-![CareMesh Clinical Observation Review](docs/assets/dashboard/08-clinical-observation-review.svg)
+- Strengthen tenant-boundary and consent integration tests.
+- Expand FHIR resource contracts and interoperability validation.
+- Improve referral and care-coordination workflow observability.
+- Add operational runbooks, resilient integration patterns and accessibility coverage.
+- Establish a formal privacy, threat-model and clinical-safety review before any real-world pilot.
 
-### 09. Organization Trust Network
-Participating organizations, trust relationships and onboarding state.
+## 11. License
 
-![CareMesh Organization Trust Network](docs/assets/dashboard/09-organization-trust-network.svg)
-
-### 10. Audit & Access Explorer
-Access decisions, actors, purpose and security review evidence.
-
-![CareMesh Audit & Access Explorer](docs/assets/dashboard/10-audit-access-explorer.svg)
-
-### 11. Integration Reliability
-API availability, latency, retry backlog and partner delivery health.
-
-![CareMesh Integration Reliability](docs/assets/dashboard/11-integration-reliability.svg)
-
-### 12. Patient Experience Overview
-Follow-up continuity, engagement signals and service feedback.
-
-![CareMesh Patient Experience Overview](docs/assets/dashboard/12-patient-experience-overview.svg)
-
-## 9. Engineering quality gates
-
-Validate the exact commit with typecheck, unit/integration tests, production build, dependency audit, CodeQL, secret scanning, tenant-isolation and consent-denial tests, FHIR mapping tests, and workflow-permission review. A green workflow is evidence for that commit and workflow only—not proof of clinical safety or regulatory compliance.
-
-## 10. Contribution and license
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). No open-source license is applied unless a license file is added; otherwise all rights are reserved.
+No open-source license is applied unless a license file is present in the repository. All rights are otherwise reserved.
