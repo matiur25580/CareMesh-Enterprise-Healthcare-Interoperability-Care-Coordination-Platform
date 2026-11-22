@@ -57,3 +57,6 @@ CareMesh is a software foundation, not a certified medical device or a claim of 
 ## Consent and purpose-of-use
 
 Patient and clinical-record disclosure paths require an explicit purpose and an active matching consent. Consent grants and revocations are organization-scoped and audited. See [Security baseline](docs/security.md) for scope and limitations.
+
+
+The patient workspace includes a consent management panel for viewing consent history, recording additional purposes, revoking active consent, and explaining consent-related clinical access denials. See [Security baseline](docs/security.md).
