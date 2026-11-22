@@ -7,6 +7,7 @@ const auditEventSchema = new Schema({
   resourceId: { type: String, maxlength: 120 },
   outcome: { type: String, enum: ["success", "denied"], required: true },
   requestId: { type: String, maxlength: 120 },
+  purposeOfUse: { type: String, enum: ["treatment", "payment", "operations"] },
   occurredAt: { type: Date, required: true, default: Date.now, immutable: true }
 }, { versionKey: false, strict: "throw" });
 auditEventSchema.index({ organizationId: 1, occurredAt: -1 });
