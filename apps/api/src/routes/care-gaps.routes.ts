@@ -96,8 +96,6 @@ careGapsRouter.post("/", authorize("owner", "admin", "clinician", "coordinator")
         return;
       }
     }
-      return;
-    }
     const gap = await CareGapModel.create({
       ...input,
       organizationId: req.auth!.tenantId,
