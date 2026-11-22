@@ -90,6 +90,7 @@ export default function PatientWorkspace() {
       if (query.trim()) params.set("q", query.trim());
       if (status !== "all") params.set("status", status);
       params.set("limit", "50");
+      params.set("purpose", "treatment");
       const result = await request<{ data: Patient[] }>(`/api/v1/patients?${params.toString()}`, token);
       setPatients(result.data);
     } catch (cause) {
@@ -102,7 +103,7 @@ export default function PatientWorkspace() {
   useEffect(() => {
     if (!token || !selected) { setRecords([]); return; }
     let cancelled = false;
-    request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records`, token)
+    request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records?purpose=treatment`, token)
       .then(result => { if (!cancelled) setRecords(result.data); })
       .catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load clinical history."); });
     return () => { cancelled = true; };
@@ -167,6 +168,7 @@ export default function PatientWorkspace() {
       await request(`/api/v1/patients/${selected._id}/records`, token, {
         method: "POST",
         body: JSON.stringify({
+          purpose: "treatment",
           resourceType: recordForm.resourceType,
           code: { display: recordForm.display },
           status: recordForm.status,
