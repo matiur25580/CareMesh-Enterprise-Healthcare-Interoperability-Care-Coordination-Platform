@@ -207,6 +207,46 @@ export default function PatientWorkspace() {
     finally { setSubmitting(false); }
   }
 
+  async function grantConsent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected || grantPurposes.length === 0) return;
+    setSubmitting(true); setError(""); setNotice("");
+    try {
+      await request("/api/v1/patients/" + selected._id + "/consents", token, {
+        method: "POST",
+        body: JSON.stringify({ purposes: grantPurposes, source: grantSource, ...(grantReference.trim() ? { reference: grantReference.trim() } : {}) })
+      });
+      setShowConsentGrant(false);
+      setGrantPurposes(["treatment"]); setGrantSource("patient"); setGrantReference("");
+      await loadConsents(selected._id);
+      setRecordAccessDenied("");
+      const result = await request<{ data: ClinicalRecord[] }>("/api/v1/patients/" + selected._id + "/records?purpose=treatment", token);
+      setRecords(result.data);
+      setNotice("Consent recorded. Treatment access was rechecked.");
+    } catch (cause) {
+      if (cause instanceof CareMeshApiError && cause.code === "CONSENT_REQUIRED") {
+        setRecords([]);
+        setRecordAccessDenied("Clinical history remains unavailable because active treatment consent is not present.");
+      } else setError(cause instanceof Error ? cause.message : "Unable to record consent.");
+    } finally { setSubmitting(false); }
+  }
+
+  async function revokeConsent(consent: Consent) {
+    if (!selected || consent.status !== "active") return;
+    if (!window.confirm("Revoke this consent? Future requests for its purposes will be denied.")) return;
+    setSubmitting(true); setError(""); setNotice("");
+    try {
+      const result = await request<{ data: Consent }>("/api/v1/patients/" + selected._id + "/consents/" + consent._id + "/revoke", token, { method: "POST" });
+      setConsents(current => current.map(item => item._id === consent._id ? result.data : item));
+      if (consent.purposes.includes("treatment")) {
+        setRecords([]);
+        setRecordAccessDenied("Treatment consent was revoked. Clinical history is now blocked for treatment purpose. Other purposes require their own active consent.");
+      }
+      setNotice("Consent revoked and the action recorded in the audit trail.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to revoke consent."); }
+    finally { setSubmitting(false); }
+  }
+
   async function createRecord(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
@@ -255,11 +295,11 @@ export default function PatientWorkspace() {
     {error && <div className="pw-alert"><AlertCircle size={16}/>{error}<button onClick={()=>setError("")} aria-label="Dismiss"><X size={14}/></button></div>}
     {notice && <div className="pw-notice"><Check size={15}/>{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss"><X size={14}/></button></div>}
     {selected ? <div className="pw-detail">
-      <button className="pw-back" onClick={()=>setSelected(null)}><ArrowLeft size={15}/> Back to patient registry</button>
+      <button className="pw-back" onClick={()=>{setSelected(null);void loadPatients();}}><ArrowLeft size={15}/> Back to patient registry</button>
       <div className="pw-patient-hero">
         <div className="pw-person-icon"><UserRound size={25}/></div>
         <div className="pw-person-title"><h2>{displayName(selected)}</h2><span>{selected.medicalRecordNumber} · {selected.status}</span></div>
-        <button className="pw-primary" onClick={()=>setShowRecord(true)}><FilePlus2 size={15}/> Add clinical record</button>
+        <div className="pw-heading-actions"><button className="pw-secondary" onClick={()=>setShowConsentGrant(true)}><ShieldCheck size={15}/> Add consent</button><button className="pw-primary" onClick={()=>setShowRecord(true)}><FilePlus2 size={15}/> Add clinical record</button></div>
       </div>
       <div className="pw-facts">
         <div><small>DATE OF BIRTH</small><b>{dateLabel(selected.birthDate)}</b></div>
@@ -267,6 +307,16 @@ export default function PatientWorkspace() {
         <div><small>ADMINISTRATIVE GENDER</small><b>{selected.administrativeGender}</b></div>
         <div><small>CONTACT</small><b>{selected.telecom?.email ?? selected.telecom?.phone ?? "Not provided"}</b></div>
       </div>
+      <section className="pw-consent-panel">
+        <div className="pw-section-head"><div><h3>Consent management</h3><p>Consent history and current authorization status for this patient</p></div><div className="pw-consent-head-actions"><span>{consents.length} entries</span><button className="pw-secondary" onClick={()=>void loadConsents(selected._id)} disabled={consentLoading}><Activity size={13}/> Refresh</button></div></div>
+        {recordAccessDenied && <div className="pw-consent-denied"><AlertCircle size={16}/><div><b>Clinical access denied</b><span>{recordAccessDenied}</span><small>Reason: CONSENT_REQUIRED · The API denied disclosure before returning clinical data.</small></div></div>}
+        {consentLoading ? <div className="pw-loading">Loading consent history…</div> : consents.length ? <div className="pw-consent-list">{consents.map(consent=><article className="pw-consent-row" key={consent._id}>
+          <div className="pw-consent-status"><span className={consent.status}>{consent.status}</span><small>{consent.purposes.join(" · ")}</small></div>
+          <div className="pw-consent-meta"><b>{consent.source.replaceAll("_"," ")}</b><span>Effective {dateLabel(consent.effectiveAt)}{consent.expiresAt ? " · Expires " + dateLabel(consent.expiresAt) : " · No expiry set"}</span>{consent.reference && <small>Reference: {consent.reference}</small>}{consent.revokedAt && <small>Revoked {dateLabel(consent.revokedAt)}</small>}</div>
+          {consent.status === "active" && <button className="pw-danger" disabled={submitting} onClick={()=>void revokeConsent(consent)}>Revoke</button>}
+        </article>)}</div> : <div className="pw-empty"><ShieldCheck size={22}/><b>No consent history</b><span>No consent records are available for this patient.</span></div>}
+        <div className="pw-consent-foot">Consent source is recorded as supplied by the operator. CareMesh does not independently verify identity, representative authority, or legal validity.</div>
+      </section>
       <div className="pw-section-head"><div><h3>Clinical history</h3><p>Records associated with this patient in the active organization</p></div><span>{records.length} records</span></div>
       <div className="pw-record-list">
         {records.length ? records.map(record=><article className="pw-record" key={record._id}><div className="pw-record-icon"><Activity size={17}/></div><div className="pw-record-content"><b>{record.code.display}</b><span>{record.resourceType.replaceAll("_"," ")} · {record.status}</span>{record.note && <p>{record.note}</p>}</div><time>{dateLabel(record.effectiveAt)}</time></article>) : <div className="pw-empty"><ClipboardList size={25}/><b>No clinical records yet</b><span>When authorized clinical information is added, it will appear here.</span></div>}
