@@ -1,13 +1,16 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import pinoHttp from "pino-http";
+import { createRequire } from "node:module";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRouter } from "./routes/health.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { organizationsRouter } from "./routes/organizations.routes.js";
+
+const require = createRequire(import.meta.url);
+const pinoHttp = require("pino-http") as typeof import("pino-http").default;
 
 export const app = express();
 app.disable("x-powered-by");
