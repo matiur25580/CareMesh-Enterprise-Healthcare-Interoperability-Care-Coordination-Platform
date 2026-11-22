@@ -37,7 +37,7 @@ npm run dev
 Web: http://localhost:5173  
 API health: http://localhost:4000/api/v1/health
 
-## Quality commands
+To point the web workspace at another API origin, set `VITE_API_BASE_URL` in the web app environment (defaults to `http://localhost:4000`).\n\n## Patient workspace\n\nThe Patient records workspace connects to the authenticated API endpoints introduced in Milestone 3. Sign in with an organization account to search the active tenant's patient registry, register a patient, inspect a patient profile, and add or review basic clinical records. The access token is held in session storage for the browser tab and refresh cookies are sent with credentialed requests. Patient queries remain server-side and tenant-scoped.\n\n## Quality commands
 
 ```bash
 npm run typecheck
