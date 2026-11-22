@@ -1,3 +1,5 @@
+import { useState } from "react";
+import PatientWorkspace from "./PatientWorkspace";
 import { Activity, ArrowUpRight, Bell, Building2, CalendarDays, ChevronDown, FileHeart, FlaskConical, HeartPulse, LayoutDashboard, Search, ShieldCheck, Users } from "lucide-react";
 
 const nav = [
@@ -18,17 +20,18 @@ const events = [
 ];
 
 export default function App() {
+  const [activeView, setActiveView] = useState("Overview");
   return <div className="shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark"><HeartPulse size={21}/></div><div><b>caremesh</b><small>CONNECTED CARE PLATFORM</small></div></div>
       <div className="workspace"><div className="workspace-icon">CN</div><div><b>CareMesh Network</b><small>Enterprise workspace</small></div><ChevronDown size={15}/></div>
       <div className="nav-label">WORKSPACE</div>
-      <nav>{nav.map(([label, Icon], i) => <a href="#" key={label} className={i===0?"nav-link active":"nav-link"} onClick={e=>e.preventDefault()}><Icon size={17}/><span>{label}</span>{label==="Care coordination"&&<small>8</small>}</a>)}</nav>
+      <nav>{nav.map(([label, Icon], i) => <a href="#" key={label} className={activeView===label?"nav-link active":"nav-link"} onClick={e=>{e.preventDefault(); if(label==="Overview" || label==="Patient records") setActiveView(label);}}><Icon size={17}/><span>{label}</span>{label==="Care coordination"&&<small>8</small>}</a>)}</nav>
       <div className="sidebar-bottom"><a className="nav-link" href="#" onClick={e=>e.preventDefault()}><ShieldCheck size={17}/><span>Security center</span></a><div className="profile"><div className="avatar">AR</div><div><b>Alex Rivera</b><small>Network administrator</small></div><ChevronDown size={15}/></div></div>
     </aside>
     <main className="main">
       <header className="topbar"><div className="crumb">Workspace <span>/</span> <b>Overview</b></div><div className="top-actions"><div className="search"><Search size={15}/> Search anything... <kbd>⌘ K</kbd></div><button className="icon-button" aria-label="Notifications"><Bell size={18}/><i/></button><div className="avatar">AR</div></div></header>
-      <section className="page">
+      {activeView === "Patient records" ? <PatientWorkspace /> : <section className="page">
         <div className="welcome"><div><div className="eyebrow"><i/> NETWORK OPERATIONS</div><h1>Good morning, Alex <span>✦</span></h1><p>Here’s what’s happening across your connected care network today.</p></div><button className="date-button"><CalendarDays size={15}/> Today, 22 Nov <ChevronDown size={14}/></button></div>
         <div className="metrics">{metrics.map(({label,value,delta,icon:Icon,tone})=><article className="metric" key={label}><div className="metric-head"><span>{label}</span><div className={`metric-icon ${tone}`}><Icon size={18}/></div></div><strong>{value}</strong><small>{delta}</small></article>)}</div>
         <div className="columns">
@@ -42,7 +45,7 @@ export default function App() {
           </aside>
         </div>
         <footer>CareMesh platform foundation · Synthetic demo data <span>System status <i/> All systems operational</span></footer>
-      </section>
+      </section>}
     </main>
   </div>;
 }
