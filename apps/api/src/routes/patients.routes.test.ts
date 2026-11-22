@@ -2,9 +2,12 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findOne, create, auditEvent } = vi.hoisted(() => ({
+const { findOne, create, patientExists, consentFind, consentFindOneAndUpdate, auditEvent } = vi.hoisted(() => ({
   findOne: vi.fn(),
   create: vi.fn(),
+  patientExists: vi.fn(),
+  consentFind: vi.fn(),
+  consentFindOneAndUpdate: vi.fn(),
   auditEvent: vi.fn()
 }));
 
@@ -22,8 +25,10 @@ vi.mock("../middleware/authenticate.js", () => ({
   }
 }));
 
-vi.mock("../models/patient.model.js", () => ({ PatientModel: { findOne, create } }));
+vi.mock("../models/patient.model.js", () => ({ PatientModel: { findOne, create, exists: patientExists } }));
+s.viMocked;
 vi.mock("../models/clinical-record.model.js", () => ({ ClinicalRecordModel: {} }));
+vi.mock("../models/consent.model.js", () => ({ ConsentModel: { find: consentFind, findOneAndUpdate: consentFindOneAndUpdate, create: vi.fn(), distinct: vi.fn() }, CONSENT_PURPOSES: ["treatment", "payment", "operations"] }));
 vi.mock("../services/audit.service.js", () => ({ recordAuditEvent: auditEvent }));
 
 import { patientsRouter } from "./patients.routes.js";
@@ -50,6 +55,7 @@ describe("patient API integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     auditEvent.mockResolvedValue(undefined);
+    patientExists.mockResolvedValue({ _id: "64b000000000000000000010" });
     findOne.mockReturnValue({ select: vi.fn().mockResolvedValue(null) });
     create.mockResolvedValue({
       _id: "64b000000000000000000010",
