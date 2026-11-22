@@ -18,7 +18,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       # The repository currently has no committed lockfile. Resolve the exact
       # workspace dependency graph in CI, then use that generated lockfile for
