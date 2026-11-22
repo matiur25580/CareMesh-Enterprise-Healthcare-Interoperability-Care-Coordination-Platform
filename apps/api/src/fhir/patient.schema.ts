@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Deliberately bounded FHIR R4 Patient subset. Unknown fields are rejected so
 // this contract cannot be mistaken for a complete FHIR resource validator.
-const fhirDate = z.string().regex(/^\\d{4}(-\\d{2}(-\\d{2})?)?$/, "Expected a FHIR date");
+const fhirDate = z.string().regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, "Expected a FHIR date");
 const humanName = z.object({
   use: z.enum(["usual", "official", "temp", "nickname", "anonymous", "old", "maiden"]).optional(),
   text: z.string().max(200).optional(),
