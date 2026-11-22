@@ -1,6 +1,6 @@
 # FHIR R4 interoperability foundation
 
-CareMesh exposes an initial, deliberately limited FHIR R4 Patient read representation.
+CareMesh exposes deliberately limited, read-only FHIR R4 Patient and Observation representations. See [Observation exchange](./fhir-r4-observation.md) for its endpoint and mapping.
 
 ## Endpoint
 
@@ -29,6 +29,6 @@ CareMesh exposes an initial, deliberately limited FHIR R4 Patient read represent
 
 ## Scope and limitations
 
-The Zod contract validates only the fields emitted by this mapper and rejects unknown fields. It is not a complete FHIR R4 schema, profile validator, terminology service, CapabilityStatement, Bundle implementation, or certification. The MRN system URI is CareMesh-specific. No inbound FHIR writes, conditional interactions, search, history, versioning, Provenance, Observation, Encounter, Condition, or external partner transport is included yet. Those require explicit profiles, terminology bindings, partner identity, transport security, replay protection, and operational governance before production exchange.
+The Zod contract validates only the fields emitted by this mapper and rejects unknown fields. It is not a complete FHIR R4 schema, profile validator, terminology service, CapabilityStatement, Bundle implementation, or certification. The MRN system URI is CareMesh-specific. No inbound FHIR writes, conditional interactions beyond the bounded Observation search, history, versioning, Provenance, Encounter, Condition, or external partner transport is included yet. Those require explicit profiles, terminology bindings, partner identity, transport security, replay protection, and operational governance before production exchange.
 
 Use synthetic data only. Do not treat this initial endpoint as evidence of regulatory compliance or clinical readiness.
