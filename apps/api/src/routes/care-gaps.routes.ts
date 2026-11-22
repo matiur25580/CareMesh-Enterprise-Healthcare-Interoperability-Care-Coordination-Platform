@@ -5,6 +5,7 @@ import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { PatientModel } from "../models/patient.model.js";
 import { CareGapModel } from "../models/care-gap.model.js";
+import { MembershipModel } from "../models/membership.model.js";
 import { hasActiveConsent } from "../services/consent.service.js";
 import { recordAuditEvent } from "../services/audit.service.js";
 
@@ -88,8 +89,13 @@ careGapsRouter.post("/", authorize("owner", "admin", "clinician", "coordinator")
       res.status(403).json({ error: { code: "CARE_GAP_ACCESS_DENIED", message: "Patient must exist in this organization and have active treatment consent." } });
       return;
     }
-    if (input.assignedTo && !Types.ObjectId.isValid(input.assignedTo)) {
-      res.status(400).json({ error: { code: "INVALID_ASSIGNEE", message: "The assignee identifier is invalid." } });
+    if (input.assignedTo) {
+      const assigneeMembership = await MembershipModel.exists({ userId: input.assignedTo, organizationId: req.auth!.tenantId, status: "active" });
+      if (!assigneeMembership) {
+        res.status(400).json({ error: { code: "INVALID_ASSIGNEE", message: "The assignee must be an active member of this organization." } });
+        return;
+      }
+    }
       return;
     }
     const gap = await CareGapModel.create({
@@ -115,6 +121,13 @@ careGapsRouter.patch("/:careGapId", authorize("owner", "admin", "clinician", "co
     if (!gap) {
       res.status(404).json({ error: { code: "CARE_GAP_NOT_FOUND", message: "The care gap was not found in this organization." } });
       return;
+    }
+    if (input.assignedTo) {
+      const assigneeMembership = await MembershipModel.exists({ userId: input.assignedTo, organizationId: req.auth!.tenantId, status: "active" });
+      if (!assigneeMembership) {
+        res.status(400).json({ error: { code: "INVALID_ASSIGNEE", message: "The assignee must be an active member of this organization." } });
+        return;
+      }
     }
     if (!await patientAccess(req, String(gap.patientId))) {
       await audit(req, "care_gap.update.denied", careGapId, "denied");
