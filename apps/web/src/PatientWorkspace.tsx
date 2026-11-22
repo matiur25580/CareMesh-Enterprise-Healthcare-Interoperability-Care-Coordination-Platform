@@ -24,6 +24,27 @@ type ClinicalRecord = {
   note?: string;
 };
 type ApiError = { error?: { message?: string; code?: string } };
+type Consent = {
+  _id: string;
+  purposes: Array<"treatment" | "payment" | "operations">;
+  status: "active" | "revoked";
+  source: "patient" | "legal_representative" | "authorized_delegate" | "synthetic_test";
+  reference?: string;
+  effectiveAt: string;
+  expiresAt?: string;
+  createdAt: string;
+  revokedAt?: string;
+};
+class CareMeshApiError extends Error {
+  code?: string;
+  status: number;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "CareMeshApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
 
 async function request<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
   const send = (accessToken: string) => fetch(`${API_BASE}${path}`, {
@@ -42,7 +63,7 @@ async function request<T>(path: string, token: string, init: RequestInit = {}): 
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => ({})) as ApiError;
-    throw new Error(payload.error?.message ?? `Request failed (${response.status})`);
+    throw new CareMeshApiError(payload.error?.message ?? `Request failed (${response.status})`, response.status, payload.error?.code);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -70,6 +91,13 @@ export default function PatientWorkspace() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selected, setSelected] = useState<Patient | null>(null);
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
+  const [consents, setConsents] = useState<Consent[]>([]);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [recordAccessDenied, setRecordAccessDenied] = useState("");
+  const [showConsentGrant, setShowConsentGrant] = useState(false);
+  const [grantPurposes, setGrantPurposes] = useState<Array<"treatment" | "payment" | "operations">>(["treatment"]);
+  const [grantSource, setGrantSource] = useState<Consent["source"]>("patient");
+  const [grantReference, setGrantReference] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("active");
   const [loading, setLoading] = useState(false);
@@ -100,14 +128,29 @@ export default function PatientWorkspace() {
 
   useEffect(() => { void loadPatients(); }, [loadPatients]);
 
+  const loadConsents = useCallback(async (patientId: string) => {
+    setConsentLoading(true);
+    try {
+      const result = await request<{ data: Consent[] }>("/api/v1/patients/" + patientId + "/consents", token);
+      setConsents(result.data);
+    } finally { setConsentLoading(false); }
+  }, [token]);
+
   useEffect(() => {
-    if (!token || !selected) { setRecords([]); return; }
+    if (!token || !selected) { setRecords([]); setConsents([]); setRecordAccessDenied(""); return; }
     let cancelled = false;
-    request<{ data: ClinicalRecord[] }>(`/api/v1/patients/${selected._id}/records?purpose=treatment`, token)
+    setRecordAccessDenied("");
+    request<{ data: ClinicalRecord[] }>("/api/v1/patients/" + selected._id + "/records?purpose=treatment", token)
       .then(result => { if (!cancelled) setRecords(result.data); })
-      .catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load clinical history."); });
+      .catch(cause => {
+        if (!cancelled && cause instanceof CareMeshApiError && cause.code === "CONSENT_REQUIRED") {
+          setRecords([]);
+          setRecordAccessDenied("Clinical history is hidden because no active consent authorizes treatment. Review the consent history below or record valid consent before retrying.");
+        } else if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load clinical history.");
+      });
+    void loadConsents(selected._id).catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load consent history."); });
     return () => { cancelled = true; };
-  }, [token, selected]);
+  }, [token, selected, loadConsents]);
 
   const counts = useMemo(() => ({
     total: patients.length,
