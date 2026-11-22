@@ -86,19 +86,17 @@ authRouter.post("/refresh", async (req, res) => {
     res.status(401).json({ error: { code: "REFRESH_REQUIRED", message: "A valid refresh session is required." } });
     return;
   }
+  const rotated = newRefreshToken();
   const session = await SessionModel.findOneAndUpdate(
     { refreshTokenHash: hashRefreshToken(token), revokedAt: null, expiresAt: { $gt: new Date() } },
-    { $set: { refreshTokenHash: hashRefreshToken(newRefreshToken()) } },
-    { new: false }
+    { $set: { refreshTokenHash: hashRefreshToken(rotated) } },
+    { new: true }
   ).select("+refreshTokenHash");
   if (!session) {
     clearRefreshCookie(res);
     res.status(401).json({ error: { code: "REFRESH_INVALID", message: "The refresh session is invalid or expired." } });
     return;
   }
-  const rotated = newRefreshToken();
-  session.refreshTokenHash = hashRefreshToken(rotated);
-  await session.save();
   setRefreshCookie(res, rotated);
   const membership = await MembershipModel.findOne({ userId: session.userId, organizationId: session.organizationId, status: "active" });
   if (!membership) {
