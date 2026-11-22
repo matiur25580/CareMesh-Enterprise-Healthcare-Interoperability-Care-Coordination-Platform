@@ -26,11 +26,20 @@ type ClinicalRecord = {
 type ApiError = { error?: { message?: string; code?: string } };
 
 async function request<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const send = (accessToken: string) => fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: "include",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init.headers }
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}`, ...init.headers }
   });
+  let response = await send(sessionStorage.getItem("caremesh_access_token") ?? token);
+  if (response.status === 401 && path !== "/api/v1/auth/refresh") {
+    const refresh = await fetch(`${API_BASE}/api/v1/auth/refresh`, { method: "POST", credentials: "include" });
+    const refreshed = await refresh.json().catch(() => ({})) as { data?: { accessToken?: string } };
+    if (refresh.ok && refreshed.data?.accessToken) {
+      sessionStorage.setItem("caremesh_access_token", refreshed.data.accessToken);
+      response = await send(refreshed.data.accessToken);
+    }
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => ({})) as ApiError;
     throw new Error(payload.error?.message ?? `Request failed (${response.status})`);
