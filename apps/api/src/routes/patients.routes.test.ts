@@ -2,9 +2,10 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findOne, create } = vi.hoisted(() => ({
+const { findOne, create, auditEvent } = vi.hoisted(() => ({
   findOne: vi.fn(),
-  create: vi.fn()
+  create: vi.fn(),
+  auditEvent: vi.fn()
 }));
 
 vi.mock("../middleware/authenticate.js", () => ({
@@ -23,6 +24,7 @@ vi.mock("../middleware/authenticate.js", () => ({
 
 vi.mock("../models/patient.model.js", () => ({ PatientModel: { findOne, create } }));
 vi.mock("../models/clinical-record.model.js", () => ({ ClinicalRecordModel: {} }));
+vi.mock("../services/audit.service.js", () => ({ recordAuditEvent: auditEvent }));
 
 import { patientsRouter } from "./patients.routes.js";
 
@@ -47,6 +49,7 @@ const validPatient = {
 describe("patient API integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    auditEvent.mockResolvedValue(undefined);
     findOne.mockReturnValue({ select: vi.fn().mockResolvedValue(null) });
     create.mockResolvedValue({
       _id: "64b000000000000000000010",
@@ -64,6 +67,13 @@ describe("patient API integration", () => {
       organizationId: "64b000000000000000000002",
       createdBy: "64b000000000000000000001",
       updatedBy: "64b000000000000000000001"
+    }));
+    expect(auditEvent).toHaveBeenCalledWith(expect.objectContaining({
+      actorUserId: "64b000000000000000000001",
+      organizationId: "64b000000000000000000002",
+      action: "patient.create",
+      resourceType: "Patient",
+      outcome: "success"
     }));
   });
 
