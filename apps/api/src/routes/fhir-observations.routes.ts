@@ -22,7 +22,7 @@ fhirObservationsRouter.get("/Observation", async (req, res, next) => {
   try {
     const patientReference = typeof req.query.patient === "string" ? req.query.patient : "";
     const match = /^Patient\/([a-f\d]{24})$/i.exec(patientReference);
-    if (!match || !Types.ObjectId.isValid(match[1])) {
+    if (!match || !match[1] || !Types.ObjectId.isValid(match[1])) {
       outcome(res, 400, "value", "Specify patient=Patient/{patientId} using a valid CareMesh patient identifier.");
       return;
     }
