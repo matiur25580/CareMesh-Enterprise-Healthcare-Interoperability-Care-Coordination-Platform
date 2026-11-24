@@ -184,6 +184,7 @@ Never use the example JWT value outside local setup. Production requires a manag
 
 ```bash
 npm test
+MONGODB_URI=mongodb://127.0.0.1:27017/caremesh_test npm run test:integration
 npm run typecheck
 npm run build
 npm run db:indexes
@@ -191,7 +192,7 @@ npm run db:indexes
 
 The CI workflow runs tests, API/web type checks, production builds and a Docker image build. CodeQL runs on pushes, pull requests and a weekly schedule. Dependabot checks npm and GitHub Actions dependencies weekly.
 
-**Verification boundary:** unit/API tests currently mock persistence where appropriate. A passing CI run does not prove live MongoDB integration, browser end-to-end behavior, FHIR conformance, clinical safety, regulatory compliance or production deployment readiness.
+**Verification boundary:** the CI pipeline runs mocked unit/API tests plus MongoDB-backed integration tests against an ephemeral MongoDB 7 service. CareMesh integration coverage uses synthetic consent scenarios only; it does not prove browser end-to-end behavior, FHIR conformance, clinical safety, regulatory compliance or production deployment readiness.
 
 ## 9. Dashboard concept gallery — 12 illustrative screens
 
@@ -284,7 +285,7 @@ docker-compose.yml
 5. Enforce purpose-of-use decisions at every protected resource boundary.
 6. Add referral workflow orchestration, durable eventing and idempotent integration patterns.
 7. Introduce immutable audit architecture, retention policy and incident response runbooks.
-8. Add live MongoDB integration tests, browser E2E tests, backup/restore exercises and operational observability.
+8. Add browser E2E tests, backup/restore exercises and operational observability.
 
 ## 12. Responsible use and disclosure
 
