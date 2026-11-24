@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, type Model } from "mongoose";
 
 export const CAREMESH_ROLES = ["platform-admin", "organization-admin", "clinician", "care-coordinator", "patient", "auditor"] as const;
 
@@ -13,4 +13,5 @@ const userSchema = new Schema({
 // A user's email is unique within an organization boundary.
 userSchema.index({ tenantId: 1, email: 1 }, { unique: true });
 
-export const User = models.User ?? model("User", userSchema);
+const existingUserModel = models.User as Model<any> | undefined;
+export const User: Model<any> = existingUserModel ?? model<any>("User", userSchema);
