@@ -1,5 +1,5 @@
 import cors from "cors";
-import express from "express";
+import express, { type RequestHandler } from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { env } from "./config/env.js";
@@ -15,7 +15,7 @@ app.disable("x-powered-by");
 app.use(helmet());
 app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
-app.use(pinoHttp({ logger }));
+app.use((pinoHttp as unknown as (options: { logger: typeof logger }) => RequestHandler)({ logger }));
 
 app.get("/", (_req, res) => {
   res.json({ name: "CareMesh API", version: "v1", docs: "API documentation is coming in a later milestone." });
