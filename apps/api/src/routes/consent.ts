@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-const evaluationLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: "Consent evaluation rate limit exceeded; retry shortly." } });
 import { z } from "zod";
 import { ConsentEvaluation } from "../models/ConsentEvaluation";
+
+const evaluationLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: "Consent evaluation rate limit exceeded; retry shortly." } });
 export const consentRouter = Router();
 const consentDecisionSchema = z.object({
   consentStatus: z.enum(["active", "revoked", "expired", "unknown"]),
