@@ -15,6 +15,11 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? false }));
 app.use(express.json({ limit: "1mb", strict: true }));
 
+app.use("/api/v1/health", healthRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/consent", authenticate, consentRouter);
+
+// Keep unversioned aliases for local compatibility.
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/consent", authenticate, consentRouter);
