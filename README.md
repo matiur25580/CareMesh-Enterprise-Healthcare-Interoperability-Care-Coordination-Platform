@@ -2,135 +2,349 @@
 
 **Enterprise Healthcare Interoperability & Care Coordination Platform**
 
-> A privacy-first foundation for trusted health information exchange and coordinated care across authorized organizations.
+> A privacy-first architecture concept for consent-aware exchange, accountable coordination and trustworthy health information workflows.
 
-[![CI](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions)](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions)
+[![CI](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions/workflows/codeql.yml/badge.svg)](https://github.com/matiur25580/CareMesh-Enterprise-Healthcare-Interoperability-Care-Coordination-Platform/actions/workflows/codeql.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-## 1. Product vision
+---
 
-CareMesh is being developed to connect healthcare organizations through consent-aware information exchange, accountable care coordination and standards-based interoperability. It aims to reduce fragmented handoffs while preserving patient privacy, organizational boundaries and attributable access.
+## 1. Executive overview
 
-## 2. Project status and responsible use
+CareMesh explores a modern, multi-tenant foundation for consent-aware health information exchange and care coordination. The long-term product direction connects organizational identity, purpose-of-use policy, interoperability contracts, referrals, accountable handoffs and audit evidence.
 
-**Status: active portfolio development; not a production clinical system.** The repository contains foundation and milestone work, but the default branch and each feature branch may differ. The dashboard gallery below is illustrative and does not prove that every depicted workflow is implemented.
+The current runnable milestone is deliberately limited: it provides tenant-aware authentication, a synthetic consent-purpose simulator, tenant-scoped decision history, API readiness checks and a React dashboard. It does **not** connect to an EHR, exchange FHIR resources, authorize access to clinical records or support real patient care.
 
-- Do not use this project to make clinical decisions or coordinate real patient care.
-- Do not upload real patient information, PHI, credentials or production exports.
-- No regulatory compliance, clinical validation, security certification or FHIR conformance is claimed.
-- Use synthetic data exclusively for development and demonstrations.
+<blockquote>
+<strong>Safety boundary:</strong> CareMesh is a portfolio/development project, not a clinical system. Use synthetic data only. Never enter patient names, identifiers, PHI, clinical records or production exports.
+</blockquote>
 
-## 3. Product domains
+**Project status:** active engineering foundation / synthetic-data MVP. The dashboard gallery below contains illustrative UI concepts made with synthetic values; these are not screenshots of a live clinical deployment.
 
-- **Organization trust:** provider directory, facilities and explicit inter-organization relationships.
-- **Identity and access:** authenticated identity, role-aware permissions and tenant isolation.
-- **Patient identity:** identity resolution and carefully governed record discovery.
-- **Consent and purpose:** consent lifecycle, permitted purpose, validity windows and authorization decisions.
-- **Interoperability:** versioned FHIR-oriented exchange contracts and validated adapters.
-- **Care coordination:** referrals, care gaps, tasks and accountable handoffs.
-- **Audit and provenance:** attributable access events, change history and evidence references.
-- **Operations:** data-quality monitoring, integration health and operational metrics.
+## 2. The problem
 
-These domains describe the product direction; implementation status should be verified against the relevant source code, tests and release branch.
+Healthcare delivery depends on multiple organizations, systems and teams. Fragmented identity, inconsistent consent interpretation and poorly observable handoffs can create operational risk. A trustworthy platform needs to answer:
 
-## 4. Architecture and engineering principles
+- Which organization and authenticated actor is requesting an action?
+- What purpose is being asserted, and is it permitted by the relevant consent?
+- Is the consent active and within its validity window?
+- Which policy version and decision rationale were applied?
+- Can an access or coordination event be attributed and reviewed?
+- Are data exchange contracts validated and privacy controls enforced?
 
-1. Deny by default; enforce authorization on the server for every protected resource.
-2. Derive tenant and organization context from trusted authentication, never from client-supplied identifiers alone.
-3. Apply consent and purpose-of-use checks at the service boundary.
-4. Minimize sensitive data in logs, traces, analytics and error responses.
-5. Validate external messages and preserve source provenance.
-6. Make retries bounded and idempotent where exchange operations require them.
-7. Use synthetic fixtures and test data; never commit PHI.
-8. Keep interoperability adapters behind explicit contracts and version boundaries.
+CareMesh is designed around explicit trust boundaries, minimum-necessary data handling and explainable authorization—not unrestricted data aggregation.
 
-## 5. Technology and repository orientation
+## 3. Product capabilities and implementation status
 
-The platform is organized around a TypeScript web/API architecture, with healthcare domain services, persistence, shared contracts and documentation. Refer to the package manifests and architecture documents on the branch being used for the exact dependency versions and runnable commands.
+### Available in this branch
 
-Common areas include `apps/api`, `apps/web`, `packages`, `docs` and `.github/workflows` where present.
+- **Tenant-aware identity:** JWT authentication, organization-scoped user accounts and role-based authorization.
+- **Synthetic consent evaluation:** rule-based evaluation of status, requested purpose, permitted purposes and validity window.
+- **Decision history:** tenant-scoped history of simulator outcomes, actor, purpose, decision and reason codes.
+- **Data minimization:** simulator history does not store subject references, patient identifiers or clinical payloads.
+- **Operational controls:** rate-limited evaluation/login endpoints, strict Zod input validation and database readiness checks.
+- **Container foundation:** multi-stage Docker build, non-root runtime and Compose-managed MongoDB.
+- **Engineering controls:** automated tests, type checks, production builds, container image build, CodeQL workflow and Dependabot configuration.
+- **Database index provisioning:** explicit idempotent index command for deployment workflows.
 
-## 6. Local development
+### Product roadmap — not represented as shipped functionality
 
-1. Install the Node.js and package-manager versions declared by the repository.
-2. Review the available `.env.example` files and configure local-only values.
-3. Start the local database and identity dependencies documented for the selected milestone.
-4. Install dependencies using the committed lockfile and the package manager specified by the workspace.
-5. Run the scripts declared in the root and application `package.json` files.
+- FHIR R4/R5 resource contracts, profile validation and terminology services.
+- SMART on FHIR / OAuth 2.0 authorization flows and external identity federation.
+- Patient identity matching and organization/provider directory.
+- Consent lifecycle ingestion, provenance, versioning and revocation propagation.
+- Purpose-of-use enforcement at each protected resource boundary.
+- Referral orchestration, task ownership, transitions of care and escalation.
+- Immutable audit event architecture, retention controls and privacy operations.
+- Integration monitoring, data-quality workflows and standards-based partner adapters.
 
-Never place production secrets in environment files committed to Git. If a command is not defined by the checked-out branch, do not assume it exists.
+The current simulator evaluates a caller-supplied synthetic snapshot. It does not retrieve or validate a persisted consent record and must not be used as a real access-control decision.
 
-## 7. Quality, security and delivery
+## 4. Architecture
 
-- Run type checking, unit/integration tests and production builds before proposing a merge.
-- Test tenant isolation, consent denial, purpose mismatch, expired consent and audit attribution.
-- Use CodeQL, secret scanning and dependency auditing in CI where configured.
-- Review workflow permissions, dependency pinning and artifact provenance.
-- Maintain threat models, data-retention decisions, backup/restore procedures and incident response guidance as the system matures.
+```text
+React + TypeScript dashboard
+          |
+          | HTTPS / JSON + Bearer JWT
+          v
+Express + TypeScript API
+  |       |        |
+  |       |        +-- Zod input validation
+  |       +----------- Authentication / role checks
+  +------------------- Tenant-scoped service routes
+          |
+          v
+       MongoDB
+  users / synthetic evaluation history
+```
 
-## 8. Illustrative dashboard gallery
+### Technology stack
 
-The 12 SVGs are **illustrative dashboard concepts**, not screenshots from a running product. Every value is synthetic. The single-column presentation is intended for readable full-width review.
+| Layer | Technology |
+|---|---|
+| Web | React 18, TypeScript, Vite |
+| API | Node.js, Express 4, TypeScript |
+| Validation | Zod |
+| Persistence | MongoDB, Mongoose |
+| Identity | bcrypt password hashing, short-lived JWT |
+| Security middleware | Helmet, CORS allowlist, express-rate-limit |
+| Testing | Vitest, Supertest, Testing Library |
+| Delivery | GitHub Actions, CodeQL, Dependabot, Docker Compose |
+| Interoperability direction | HL7 FHIR, SMART on FHIR, terminology services (roadmap) |
+
+## 5. Privacy, security and safety model
+
+- Tenant context is derived from the authenticated token on protected API operations.
+- Protected routes apply role authorization at the service boundary.
+- Passwords are stored as bcrypt hashes; access tokens are short-lived and use issuer/audience validation.
+- Consent evaluation accepts a strict schema and rejects unexpected fields.
+- Successful simulator evaluations are stored with actor, requested purpose, consent status, decision and reason codes.
+- The simulator history deliberately excludes subject reference, patient identifier and clinical payload.
+- API logs and error responses should not contain health data or secrets.
+- A simulator result is **not** a legal consent ledger, a clinical decision, or an authorization to access an EHR.
+- Never connect production clinical systems or load real patient data into this project.
+
+### Database indexes
+
+Production automatic index creation is disabled. Run the explicit index provisioning command as a controlled deployment/migration step using an environment with database access and index-creation privileges:
+
+```bash
+MONGODB_URI='mongodb://127.0.0.1:27017/caremesh' npm run db:indexes
+```
+
+The command provisions declared user, consent and synthetic evaluation indexes and exits non-zero if provisioning fails. Review index changes and database permissions before rollout.
+
+## 6. Quick start
+
+### Prerequisites
+
+- Node.js 20 or newer and npm
+- Docker Engine + Docker Compose (recommended for the complete local stack)
+- A local MongoDB instance if not using Compose
+- `jq` for the optional command-line API examples
+
+### Option A — Docker Compose
+
+Create a local-only secret and start the application:
+
+```bash
+printf 'JWT_SECRET=%s\n' "$(openssl rand -base64 48)" > .env
+docker compose up --build -d
+docker compose ps
+docker compose logs -f app
+```
+
+Open **http://localhost:4100**. API health is available at `/api/health`; database readiness is available at `/api/health/ready`.
+
+Stop the containers with `docker compose down`. The named MongoDB volume is preserved; use `docker compose down -v` only when intentionally deleting local database data.
+
+### Option B — Run from source
+
+```bash
+cp .env.example .env
+# Edit .env and replace JWT_SECRET with a random value of at least 32 characters.
+npm install
+npm run dev
+```
+
+In a second terminal:
+
+```bash
+npm run dev:web
+```
+
+Open **http://localhost:5174**. The Vite development server proxies API requests to port 4100.
+
+### Provision a synthetic test account
+
+After configuring MongoDB and the environment, create a synthetic-data-only account with the operator-only CLI:
+
+```bash
+npm run user:create
+```
+
+Use the CLI prompts; do not commit credentials or use real patient information.
+
+### Exercise the synthetic consent API from the command line
+
+The following example uses only synthetic consent metadata. It does not identify a patient, retrieve a consent record or authorize access to clinical information.
+
+Set the local API address and sign in with the synthetic account created above. Keep credentials in environment variables or a secret manager; never paste passwords or bearer tokens into committed scripts:
+
+```bash
+export CAREMESH_API_URL='http://localhost:4100'
+export CAREMESH_TENANT_ID='<synthetic-tenant-id>'
+export CAREMESH_EMAIL='<synthetic-user-email>'
+read -rs -p 'Synthetic account password: ' CAREMESH_PASSWORD; echo
+export CAREMESH_PASSWORD
+
+# Exchange the synthetic account credentials for a short-lived bearer token.
+export CAREMESH_TOKEN="$(jq -n \
+  --arg tenantId "$CAREMESH_TENANT_ID" \
+  --arg email "$CAREMESH_EMAIL" \
+  --arg password "$CAREMESH_PASSWORD" \
+  '{tenantId:$tenantId,email:$email,password:$password}' \
+  | curl -fsS "$CAREMESH_API_URL/api/auth/login" \
+      -H 'Content-Type: application/json' --data-binary @- \
+  | jq -r '.accessToken')"
+
+# Build a currently valid, entirely synthetic consent time window.
+VALID_FROM="$(node -e 'console.log(new Date(Date.now()-60000).toISOString())')"
+VALID_UNTIL="$(node -e 'console.log(new Date(Date.now()+86400000).toISOString())')"
+
+# Evaluate a synthetic purpose; this is a simulator result, not EHR authorization.
+jq -n \
+  --arg from "$VALID_FROM" \
+  --arg until "$VALID_UNTIL" \
+  '{consentStatus:"active",requestedPurpose:"care-coordination-demo",permittedPurposes:["care-coordination-demo"],validFrom:$from,validUntil:$until}' \
+  | curl -fsS -X POST "$CAREMESH_API_URL/api/consent/evaluate" \
+      -H "Authorization: Bearer $CAREMESH_TOKEN" \
+      -H 'Content-Type: application/json' --data-binary @- | jq .
+
+# Inspect the latest tenant-scoped synthetic decisions.
+curl -fsS "$CAREMESH_API_URL/api/consent/history?limit=10" \
+  -H "Authorization: Bearer $CAREMESH_TOKEN" | jq .
+```
+
+Expected response: `decision: "allow"` with an empty `reasons` array when the synthetic status, purpose and validity window all match. Try `consentStatus:"revoked"` or a purpose not in `permittedPurposes` to see a deny decision and its reason codes. The API stores only the actor, purpose, status, decision and reason codes—not patient identifiers, subject references or clinical payloads.
+
+For a quick local smoke check:
+
+```bash
+curl -fsS "$CAREMESH_API_URL/api/health" | jq .
+curl -fsS "$CAREMESH_API_URL/api/health/ready" | jq .
+npm test
+npm run typecheck
+npm run build
+```
+
+## 7. Environment configuration
+
+| Variable | Purpose | Example / requirement |
+|---|---|---|
+| `MONGODB_URI` | MongoDB connection string | Local URI in `.env.example`; production URI from secret manager |
+| `PORT` | API listen port | `4100` |
+| `HOST` | API bind interface | `0.0.0.0` in containers |
+| `CORS_ORIGIN` | Allowed browser origin(s) | `http://localhost:5174` |
+| `NODE_ENV` | Runtime mode | `development` or `production` |
+| `JWT_SECRET` | JWT signing secret | Random secret, minimum 32 characters |
+
+Never use the example JWT value outside local setup. Production requires a managed secret store, authenticated MongoDB with TLS, restricted network access, backups, monitoring and formal privacy/security review.
+
+## 8. Run quality checks
+
+```bash
+npm test
+MONGODB_URI=mongodb://127.0.0.1:27017/caremesh_test npm run test:integration
+npm run typecheck
+npm run build
+npm run db:indexes
+```
+
+The CI workflow runs tests, API/web type checks, production builds and a Docker image build. CodeQL runs on pushes, pull requests and a weekly schedule. Dependabot checks npm and GitHub Actions dependencies weekly.
+
+**Verification boundary:** the CI pipeline runs mocked unit/API tests plus MongoDB-backed integration tests against an ephemeral MongoDB 7 service. CareMesh integration coverage uses synthetic consent scenarios only; it does not prove browser end-to-end behavior, FHIR conformance, clinical safety, regulatory compliance or production deployment readiness.
+
+## 9. Dashboard concept gallery — 12 illustrative screens
+
+The following twelve images are **illustrative UI concepts** created for product storytelling and design direction. They use synthetic sample values and are arranged in a single vertical column for easy review. They are not captures from a live clinical system and do not imply that every depicted module is implemented.
 
 ### 01 — Care coordination command center
-A high-level view of cross-organization care activity, open handoffs and operational signals.
-![CareMesh care coordination command center](docs/assets/dashboard/01-care-coordination-command-center.svg)
+An operational overview concept for cross-organization coordination, open handoffs, referral status and service signals. A future implementation should expose ownership and escalation context, not just aggregate counts.
+
+![Illustrative CareMesh dashboard — care coordination command center](docs/assets/dashboard/01-care-coordination-command-center.svg)
 
 ### 02 — Patient identity resolution
-A concept for identity-match review, confidence indicators and careful duplicate-resolution workflows.
-![CareMesh patient identity resolution](docs/assets/dashboard/02-patient-identity-resolution.svg)
+A proposed identity-review workspace for candidate matching, confidence indicators and duplicate-resolution governance. Any real identity workflow would require strict authorization, human review and carefully controlled identifiers.
+
+![Illustrative CareMesh dashboard — patient identity resolution](docs/assets/dashboard/02-patient-identity-resolution.svg)
 
 ### 03 — Consent and purpose governance
-A view of consent state, permitted purposes, expiry windows and review exceptions.
-![CareMesh consent and purpose governance](docs/assets/dashboard/03-consent-purpose-dashboard.svg)
+A consent overview concept for status, permitted purpose, validity windows and exceptions. The current MVP implements a synthetic consent-purpose simulator, not a persisted consent lifecycle or production authorization service.
+
+![Illustrative CareMesh dashboard — consent and purpose governance](docs/assets/dashboard/03-consent-purpose-dashboard.svg)
 
 ### 04 — FHIR interoperability hub
-A conceptual exchange monitor for resource validation, partner endpoints and integration outcomes.
-![CareMesh FHIR interoperability hub](docs/assets/dashboard/04-fhir-interoperability-hub.svg)
+A future integration workspace for resource validation, partner endpoints, exchange status and error handling. FHIR profiles, terminology validation and actual exchange adapters remain roadmap capabilities.
+
+![Illustrative CareMesh dashboard — FHIR interoperability hub](docs/assets/dashboard/04-fhir-interoperability-hub.svg)
 
 ### 05 — Referral management workspace
-A workflow concept for referral ownership, receiving organizations and handoff progress.
-![CareMesh referral management workspace](docs/assets/dashboard/05-referral-management-workspace.svg)
+A coordination concept for referral ownership, receiving organization, status transitions and outstanding actions. A production workflow should include idempotency, escalation and accountable handoff history.
+
+![Illustrative CareMesh dashboard — referral management workspace](docs/assets/dashboard/05-referral-management-workspace.svg)
 
 ### 06 — Clinical access audit
-An attributable event view for sensitive-record access, policy decisions and audit review.
-![CareMesh clinical access audit](docs/assets/dashboard/06-clinical-access-audit.svg)
+A proposed review surface for attributable access events, policy context and investigation status. The current synthetic audit history records simulator activity only and is not a clinical access ledger.
+
+![Illustrative CareMesh dashboard — clinical access audit](docs/assets/dashboard/06-clinical-access-audit.svg)
 
 ### 07 — Care gap intelligence
-A synthetic prioritization view for care gaps and follow-up coordination.
-![CareMesh care gap intelligence](docs/assets/dashboard/07-care-gap-intelligence.svg)
+A future coordination view for follow-up needs, care-gap ownership and prioritized outreach. It should be driven by validated, authorized data and should not autonomously make clinical decisions.
+
+![Illustrative CareMesh dashboard — care gap intelligence](docs/assets/dashboard/07-care-gap-intelligence.svg)
 
 ### 08 — Organization trust network
-A view of provider relationships, exchange permissions and partner readiness.
-![CareMesh organization trust network](docs/assets/dashboard/08-organization-trust-network.svg)
+A partner-governance concept for organization identity, exchange relationships, trust status and integration readiness. Access should be explicitly scoped to approved organizational relationships.
+
+![Illustrative CareMesh dashboard — organization trust network](docs/assets/dashboard/08-organization-trust-network.svg)
 
 ### 09 — Patient record timeline
-A synthetic timeline concept for encounters, observations and transitions of care.
-![CareMesh patient record timeline](docs/assets/dashboard/09-patient-record-timeline.svg)
+A conceptual longitudinal timeline for synthetic encounters, observations and transitions. No real patient record timeline is implemented; do not enter patient data into this demonstration.
+
+![Illustrative CareMesh dashboard — patient record timeline](docs/assets/dashboard/09-patient-record-timeline.svg)
 
 ### 10 — Interoperability data quality
-A quality workspace for validation exceptions, terminology mapping and completeness signals.
-![CareMesh interoperability data quality](docs/assets/dashboard/10-data-quality-monitor.svg)
+A future data-quality workspace for validation failures, terminology mapping, completeness and provenance. Quality signals should be traceable to source system, profile and validation version.
+
+![Illustrative CareMesh dashboard — interoperability data quality](docs/assets/dashboard/10-data-quality-monitor.svg)
 
 ### 11 — Security and privacy operations
-A governance view for access anomalies, consent exceptions and privacy review status.
-![CareMesh security and privacy operations](docs/assets/dashboard/11-security-operations-center.svg)
+A privacy operations concept for access anomalies, consent exceptions, review queues and incident context. A production implementation needs defined retention, alert triage and auditable response procedures.
+
+![Illustrative CareMesh dashboard — security and privacy operations](docs/assets/dashboard/11-security-operations-center.svg)
 
 ### 12 — Referral performance analytics
-A reporting concept for referral turnaround, closure rates and cross-organization performance.
-![CareMesh referral performance analytics](docs/assets/dashboard/12-referral-performance-analytics.svg)
+An operational analytics concept for referral turnaround, closure rates, aging handoffs and partner-level performance. Metrics should be transparent about definitions, data freshness and cohort scope.
 
-## 9. Documentation and contribution
+![Illustrative CareMesh dashboard — referral performance analytics](docs/assets/dashboard/12-referral-performance-analytics.svg)
 
-Start with the architecture and security documentation under `docs/`, then review [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Keep pull requests focused, tested and explicit about implementation status and limitations.
+## 10. Repository map
 
-## 10. Roadmap themes
+```text
+apps/
+  api/                 Express API, models, middleware, routes and tests
+  web/                 React dashboard and UI tests
+scripts/
+  create-user.ts       Synthetic account provisioning
+  ensure-indexes.ts    Explicit database index provisioning
+docs/
+  assets/dashboard/    12 illustrative SVG dashboard concepts
+.github/
+  workflows/           CI and CodeQL workflows
+  dependabot.yml       Dependency update policy
+Dockerfile
+docker-compose.yml
+```
 
-- Strengthen tenant-boundary and consent integration tests.
-- Expand FHIR resource contracts and interoperability validation.
-- Improve referral and care-coordination workflow observability.
-- Add operational runbooks, resilient integration patterns and accessibility coverage.
-- Establish a formal privacy, threat-model and clinical-safety review before any real-world pilot.
+## 11. Engineering principles and next milestones
 
-## 11. License
+1. Establish formal data classification, privacy impact assessment and threat model.
+2. Define FHIR resource/profile contracts and validate them against published test suites.
+3. Implement SMART on FHIR / OAuth 2.0 and external identity federation.
+4. Build consent lifecycle ingestion with provenance, versioning and revocation propagation.
+5. Enforce purpose-of-use decisions at every protected resource boundary.
+6. Add referral workflow orchestration, durable eventing and idempotent integration patterns.
+7. Introduce immutable audit architecture, retention policy and incident response runbooks.
+8. Add browser E2E tests, backup/restore exercises and operational observability.
 
-No open-source license is applied unless a license file is present in the repository. All rights are otherwise reserved.
+## 12. Responsible use and disclosure
+
+CareMesh is a software engineering portfolio project, not a medical device, clinical decision support system or production healthcare interoperability service. No legal, regulatory, security certification, FHIR conformance or clinical validation is claimed. Use synthetic data only. Do not connect real EHR systems or upload PHI. See [SECURITY.md](SECURITY.md) for responsible vulnerability disclosure and [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
+
+## 13. License
+
+No open-source license is granted unless a license file is present in this repository. All rights are otherwise reserved.
