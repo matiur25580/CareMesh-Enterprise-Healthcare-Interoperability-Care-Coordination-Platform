@@ -2,7 +2,8 @@ import { FormEvent, useEffect, useState } from "react";
 
 type User = { id: string; tenantId: string; email: string; role: string };
 type Health = { status: string; database: string; service: string };
-type Decision = { decision: "allow" | "deny"; reasons: string[] };
+type Decision = { decision: "allow" | "deny"; reasons: string[]; evaluatedAt?: string };
+type AuditItem = { _id: string; requestedPurpose: string; consentStatus: string; decision: "allow" | "deny"; reasons: string[]; evaluatedAt: string; actorUserId: string };
 const API = import.meta.env.VITE_API_BASE_URL ?? "";
 async function api<T>(path: string, token?: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API}${path}`, {
@@ -25,15 +26,24 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Decision | null>(null);
+  const [history, setHistory] = useState<AuditItem[]>([]);
   const [form, setForm] = useState({ consentStatus: "active", requestedPurpose: "care-coordination", permittedPurposes: "treatment, care-coordination", validFrom: new Date(Date.now()-3600000).toISOString(), validUntil: new Date(Date.now()+86400000).toISOString() });
 
   useEffect(() => { api<Health>("/api/health").then(setHealth).catch(() => setHealth(null)); }, []);
+
+  async function refreshHistory(accessToken: string) {
+    try {
+      const data = await api<{ items: AuditItem[] }>("/api/consent/history?limit=25", accessToken);
+      setHistory(data.items);
+    } catch { setNotice("Decision completed, but history could not be refreshed."); }
+  }
 
   async function signIn(event: FormEvent) {
     event.preventDefault(); setBusy(true); setNotice("");
     try {
       const data = await api<{ accessToken: string; user: User }>("/api/auth/login", undefined, { method: "POST", body: JSON.stringify({ tenantId, email, password }) });
       setToken(data.accessToken); setUser(data.user); setPassword("");
+      await refreshHistory(data.accessToken);
       setNotice("Signed in. Use synthetic consent snapshots only.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Sign-in failed"); }
     finally { setBusy(false); }
@@ -54,12 +64,13 @@ export default function App() {
         })
       });
       setResult(data);
-      setNotice("Evaluation completed against the supplied synthetic snapshot. This is not an EHR access authorization.");
+      await refreshHistory(token);
+      setNotice("Evaluation completed and recorded in tenant-scoped synthetic audit history. This is not an EHR access authorization.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Evaluation failed"); }
     finally { setBusy(false); }
   }
 
-  function signOut() { setToken(""); setUser(null); setResult(null); setNotice("Signed out."); }
+  function signOut() { setToken(""); setUser(null); setResult(null); setHistory([]); setNotice("Signed out."); }
 
   return <main className="layout">
     <aside className="rail"><div className="brand"><span className="mark">+</span><div><strong>CareMesh</strong><small>CONNECTED CARE SYSTEMS</small></div></div>
@@ -89,6 +100,15 @@ export default function App() {
           {result ? <div className="decision"><div className={result.decision === "allow" ? "decision-mark allow" : "decision-mark deny"}>{result.decision === "allow" ? "✓" : "×"}</div><div><span className="kicker">SIMULATED DECISION</span><h2 className={result.decision}>{result.decision.toUpperCase()}</h2></div><div className="reasons"><strong>Decision rationale</strong>{result.reasons.length ? result.reasons.map(reason=><span key={reason}>• {reason.replaceAll("-"," ")}</span>) : <span>• All supplied snapshot checks passed</span>}</div></div> : <div className="result-empty"><span>◎</span><strong>Awaiting evaluation</strong><p>Submit the synthetic snapshot to see the rule outcome and rationale.</p></div>}
           <div className="result-foot">A simulated allow result does not grant access to an external clinical system.</div>
         </article></section>
+        <section className="card history-card">
+          <div className="card-head"><div><span className="kicker">AUDIT TRAIL</span><h3>Recent synthetic decisions</h3></div><button className="outline" onClick={()=>refreshHistory(token)}>Refresh history ↻</button></div>
+          {history.length ? <div className="history-list">{history.map(item=><div className="history-row" key={item._id}>
+            <div><strong>{item.requestedPurpose}</strong><small>{new Date(item.evaluatedAt).toLocaleString()} · {item.consentStatus} · {item.actorUserId}</small></div>
+            <span className={item.decision === "allow" ? "history-allow" : "history-deny"}>{item.decision.toUpperCase()}</span>
+            <small className="history-reasons">{item.reasons.length ? item.reasons.join(", ") : "All supplied checks passed"}</small>
+          </div>)}</div> : <div className="history-empty">No synthetic evaluations recorded for this organization yet.</div>}
+          <p className="history-disclaimer">History stores decision, purpose, actor and reason codes only. It does not store patient identifiers or clinical data.</p>
+        </section>
       </>}
       {notice && <div className="notice" role="status">{notice}</div>}
       <footer>CAREMESH · DEVELOPMENT FOUNDATION <span>No PHI · No clinical workflows · No compliance claims</span></footer>
