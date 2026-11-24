@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimit } from "express-rate-limit";
+const evaluationLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: "Consent evaluation rate limit exceeded; retry shortly." } });
 import { z } from "zod";
 import { ConsentEvaluation } from "../models/ConsentEvaluation";
 export const consentRouter = Router();
@@ -16,7 +18,7 @@ consentRouter.get("/history", async (request, response) => {
     response.status(200).json({ items, count: items.length });
   } catch { response.status(500).json({ error: "Unable to load consent decision history" }); }
 });
-consentRouter.post("/evaluate", async (request, response) => {
+consentRouter.post("/evaluate", evaluationLimiter, async (request, response) => {
   const parsed = consentDecisionSchema.safeParse(request.body);
   if (!parsed.success) {
     response.status(400).json({ error: "Consent decision input failed validation", details: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) });
