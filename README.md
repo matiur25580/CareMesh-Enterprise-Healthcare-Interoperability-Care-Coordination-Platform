@@ -124,6 +124,7 @@ The command provisions declared user, consent and synthetic evaluation indexes a
 - Node.js 20 or newer and npm
 - Docker Engine + Docker Compose (recommended for the complete local stack)
 - A local MongoDB instance if not using Compose
+- `jq` for the optional command-line API examples
 
 ### Option A — Docker Compose
 
