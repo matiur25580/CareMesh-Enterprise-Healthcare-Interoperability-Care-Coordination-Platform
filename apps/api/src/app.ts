@@ -18,6 +18,9 @@ app.use(express.json({ limit: "1mb", strict: true }));
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/consent", authenticate, consentRouter);
+app.use("/api", (_request, response) => response.status(404).json({
+  error: { code: "NOT_FOUND", message: "The requested API resource was not found." }
+}));
 
 // Serve the compiled Vite application when a web build is present.
 const webDist = path.resolve(process.cwd(), "apps/web/dist");
