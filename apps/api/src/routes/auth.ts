@@ -38,9 +38,10 @@ authRouter.post("/login", loginLimiter, async (request, response) => {
 
   try {
     const { tenantId, email, password } = parsed.data;
-    const user = await User.findOne({
+    const loginFilter = mongoose.sanitizeFilter({
       tenantId, email: email.toLowerCase(), active: true
-    }).select("+passwordHash tenantId role email");
+    });
+    const user = await User.findOne(loginFilter).select("+passwordHash tenantId role email");
 
     const passwordMatches = user
       ? await bcrypt.compare(password, user.passwordHash)
