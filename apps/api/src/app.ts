@@ -1,13 +1,14 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { authenticate } from "./middleware/authenticate";
+import { authorize } from "./middleware/authorize";
+import { authRouter } from "./routes/auth";
 import { healthRouter } from "./routes/health";
 import { consentRouter } from "./routes/consent";
 
 export const app = express();
 
-// CareMesh starts with restrictive defaults. Configure trusted origins explicitly
-// at deployment time rather than reflecting arbitrary browser origins.
 app.disable("x-powered-by");
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? false }));
@@ -22,14 +23,15 @@ app.get("/", (_request, response) => {
 });
 
 app.use("/api/health", healthRouter);
-app.use("/api/consent", consentRouter);
+app.use("/api/auth", authRouter);
+// Consent evaluation is limited to authenticated care and organization roles.
+// It still evaluates synthetic request data only; it does not authorize EHR access.
+app.use("/api/consent", authenticate, authorize("platform-admin", "organization-admin", "clinician", "care-coordinator", "auditor"), consentRouter);
 
-// Do not echo request bodies or sensitive values from unexpected errors.
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
   if (error instanceof SyntaxError) {
     response.status(400).json({ error: "Invalid JSON request body" });
     return;
   }
-
   response.status(500).json({ error: "Internal server error" });
 });
