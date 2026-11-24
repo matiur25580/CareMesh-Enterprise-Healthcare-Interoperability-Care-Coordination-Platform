@@ -4,6 +4,7 @@ import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { ConsentEvaluation } from "../models/ConsentEvaluation";
 
+const historyLimiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false });
 const evaluationLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: "Consent evaluation rate limit exceeded; retry shortly." } });
 export const consentRouter = Router();
 const consentDecisionSchema = z.object({
@@ -13,7 +14,7 @@ const consentDecisionSchema = z.object({
   validFrom: z.string().datetime({ offset: true }),
   validUntil: z.string().datetime({ offset: true })
 }).strict();
-consentRouter.get("/history", authorize("platform-admin", "organization-admin", "clinician", "care-coordinator", "auditor"), async (request, response) => {
+consentRouter.get("/history", historyLimiter, authorize("platform-admin", "organization-admin", "clinician", "care-coordinator", "auditor"), async (request, response) => {
   try {
     const limit = Math.min(Math.max(Number(request.query.limit) || 20, 1), 100);
     const items = await ConsentEvaluation.find({ tenantId: request.auth!.tenantId }).sort({ evaluatedAt: -1 }).limit(limit).lean();
