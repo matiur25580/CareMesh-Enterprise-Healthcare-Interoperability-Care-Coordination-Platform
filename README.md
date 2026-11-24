@@ -134,3 +134,26 @@ Start with the architecture and security documentation under `docs/`, then revie
 ## 11. License
 
 No open-source license is applied unless a license file is present in the repository. All rights are otherwise reserved.
+
+## 9. Runnable web dashboard (synthetic-data milestone)
+
+The React/Vite dashboard now lives in `apps/web`. It provides tenant login, API health visibility and a consent-purpose simulator. The evaluator accepts only a synthetic consent snapshot and returns a rule-based demonstration result. It does not read persisted consent records, authorize EHR access, exchange FHIR resources, or support clinical workflows.
+
+Run the API and web development server in separate terminals:
+
+```bash
+npm install
+npm run dev
+npm run dev:web
+```
+
+Open `http://localhost:5174`. The Vite server proxies `/api` requests to the local API on port 4100.
+
+For a production-style local build:
+
+```bash
+npm run build
+npm start
+```
+
+The API serves `apps/web/dist` at its root when that build exists. Access tokens are held in browser memory and are cleared on refresh/sign-out. Provision a synthetic-data-only test account with the operator-only `npm run user:create` command.
