@@ -1,0 +1,19 @@
+{
+  "name": "caremesh",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enterprise healthcare interoperability and care coordination platform",
+  "engines": { "node": ">=22.0.0", "npm": ">=10.0.0" },
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build:contracts": "npm run build --workspace @caremesh/contracts",
+    "dev": "npm run build:contracts && concurrently \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev --workspace @caremesh/api",
+    "dev:web": "npm run dev --workspace @caremesh/web",
+    "build": "npm run build:contracts && npm run build --workspace @caremesh/api && npm run build --workspace @caremesh/web",
+    "typecheck": "npm run build:contracts && npm run typecheck --workspace @caremesh/api && npm run typecheck --workspace @caremesh/web",
+    "test": "npm run test --workspace @caremesh/api",
+    "lint": "npm run lint --workspace @caremesh/api && npm run lint --workspace @caremesh/web"
+  },
+  "devDependencies": { "concurrently": "^9.1.2", "typescript": "^5.8.3" }
+}
