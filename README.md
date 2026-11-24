@@ -167,6 +167,59 @@ npm run user:create
 
 Use the CLI prompts; do not commit credentials or use real patient information.
 
+### Exercise the synthetic consent API from the command line
+
+The following example uses only synthetic consent metadata. It does not identify a patient, retrieve a consent record or authorize access to clinical information.
+
+Set the local API address and sign in with the synthetic account created above. Keep credentials in environment variables or a secret manager; never paste passwords or bearer tokens into committed scripts:
+
+```bash
+export CAREMESH_API_URL='http://localhost:4100'
+export CAREMESH_TENANT_ID='<synthetic-tenant-id>'
+export CAREMESH_EMAIL='<synthetic-user-email>'
+read -rs -p 'Synthetic account password: ' CAREMESH_PASSWORD; echo
+export CAREMESH_PASSWORD
+
+# Exchange the synthetic account credentials for a short-lived bearer token.
+export CAREMESH_TOKEN="$(jq -n \
+  --arg tenantId "$CAREMESH_TENANT_ID" \
+  --arg email "$CAREMESH_EMAIL" \
+  --arg password "$CAREMESH_PASSWORD" \
+  '{tenantId:$tenantId,email:$email,password:$password}' \
+  | curl -fsS "$CAREMESH_API_URL/api/auth/login" \
+      -H 'Content-Type: application/json' --data-binary @- \
+  | jq -r '.accessToken')"
+
+# Build a currently valid, entirely synthetic consent time window.
+VALID_FROM="$(node -e 'console.log(new Date(Date.now()-60000).toISOString())')"
+VALID_UNTIL="$(node -e 'console.log(new Date(Date.now()+86400000).toISOString())')"
+
+# Evaluate a synthetic purpose; this is a simulator result, not EHR authorization.
+jq -n \
+  --arg from "$VALID_FROM" \
+  --arg until "$VALID_UNTIL" \
+  '{consentStatus:"active",requestedPurpose:"care-coordination-demo",permittedPurposes:["care-coordination-demo"],validFrom:$from,validUntil:$until}' \
+  | curl -fsS -X POST "$CAREMESH_API_URL/api/consent/evaluate" \
+      -H "Authorization: Bearer $CAREMESH_TOKEN" \
+      -H 'Content-Type: application/json' --data-binary @- | jq .
+
+# Inspect the latest tenant-scoped synthetic decisions.
+curl -fsS "$CAREMESH_API_URL/api/consent/history?limit=10" \
+  -H "Authorization: Bearer $CAREMESH_TOKEN" | jq .
+```
+
+Expected response: `decision: "allow"` with an empty `reasons` array when the synthetic status, purpose and validity window all match. Try `consentStatus:"revoked"` or a purpose not in `permittedPurposes` to see a deny decision and its reason codes. The API stores only the actor, purpose, status, decision and reason codes—not patient identifiers, subject references or clinical payloads.
+
+For a quick local smoke check:
+
+```bash
+curl -fsS "$CAREMESH_API_URL/api/health" | jq .
+curl -fsS "$CAREMESH_API_URL/api/health/ready" | jq .
+npm test
+npm run typecheck
+npm run build
+```
+
 ## 7. Environment configuration
 
 | Variable | Purpose | Example / requirement |
