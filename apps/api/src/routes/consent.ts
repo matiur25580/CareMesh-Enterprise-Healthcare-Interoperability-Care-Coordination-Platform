@@ -11,12 +11,10 @@ const consentDecisionSchema = z.object({
   validUntil: z.string().datetime({ offset: true })
 }).strict();
 
-// This endpoint evaluates a supplied synthetic consent snapshot. It is not an
-// identity, authorization, or clinical-data access boundary: those require
-// trusted server-side patient/tenant context and persisted consent evidence.
+// This endpoint evaluates a supplied synthetic consent snapshot only. It does
+// not authorize access to clinical data or replace a persisted consent record.
 consentRouter.post("/evaluate", (request, response) => {
   const parsed = consentDecisionSchema.safeParse(request.body);
-
   if (!parsed.success) {
     response.status(400).json({
       error: "Consent decision input failed validation",
@@ -34,10 +32,7 @@ consentRouter.post("/evaluate", (request, response) => {
   const endsAt = Date.parse(consent.validUntil);
   const withinValidityWindow = startsAt <= now && now < endsAt;
   const purposeAllowed = consent.permittedPurposes.includes(consent.requestedPurpose);
-  const allowed =
-    consent.consentStatus === "active" &&
-    withinValidityWindow &&
-    purposeAllowed;
+  const allowed = consent.consentStatus === "active" && withinValidityWindow && purposeAllowed;
 
   response.status(200).json({
     decision: allowed ? "allow" : "deny",
