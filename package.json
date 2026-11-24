@@ -36,7 +36,7 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.4",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3",
+    "typescript": "^7.0.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/react": "^18.3.18",
