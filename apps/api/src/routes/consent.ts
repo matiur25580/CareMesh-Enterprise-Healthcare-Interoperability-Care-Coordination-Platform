@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authorize } from "../middleware/authorize";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { ConsentEvaluation } from "../models/ConsentEvaluation";
@@ -12,14 +13,14 @@ const consentDecisionSchema = z.object({
   validFrom: z.string().datetime({ offset: true }),
   validUntil: z.string().datetime({ offset: true })
 }).strict();
-consentRouter.get("/history", async (request, response) => {
+consentRouter.get("/history", authorize("platform-admin", "organization-admin", "clinician", "care-coordinator", "auditor"), async (request, response) => {
   try {
     const limit = Math.min(Math.max(Number(request.query.limit) || 20, 1), 100);
     const items = await ConsentEvaluation.find({ tenantId: request.auth!.tenantId }).sort({ evaluatedAt: -1 }).limit(limit).lean();
     response.status(200).json({ items, count: items.length });
   } catch { response.status(500).json({ error: "Unable to load consent decision history" }); }
 });
-consentRouter.post("/evaluate", evaluationLimiter, async (request, response) => {
+consentRouter.post("/evaluate", authorize("platform-admin", "organization-admin", "clinician", "care-coordinator"), evaluationLimiter, async (request, response) => {
   const parsed = consentDecisionSchema.safeParse(request.body);
   if (!parsed.success) {
     response.status(400).json({ error: "Consent decision input failed validation", details: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) });
