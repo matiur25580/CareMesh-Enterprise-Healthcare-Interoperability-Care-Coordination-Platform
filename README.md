@@ -175,3 +175,21 @@ npm run build
 The tests cover consent decision rules, strict input validation, synthetic audit recording, tenant-scoped history queries, JWT account revalidation, role authorization, and dashboard safety messaging. GitHub Actions runs tests, type checks, and production builds on pushes and pull requests.
 
 **Safety boundary:** keep this project synthetic-data-only. Do not enter patient information or connect production clinical systems until privacy, security, consent provenance, access controls, audit integrity, threat modelling and legal/compliance reviews have been completed.
+
+
+## Container workflow (synthetic data only)
+
+A local Docker Compose stack runs the API/web application with MongoDB. This is for local development and synthetic demonstrations only; it is not a production clinical deployment.
+
+```bash
+# Create a local-only secret (keep .env out of version control).
+printf 'JWT_SECRET=%s\n' "$(openssl rand -base64 48)" > .env
+
+docker compose up --build -d
+docker compose ps
+docker compose logs -f app
+```
+
+Open http://localhost:4100. The API readiness endpoint is available at `/api/health/ready`; Compose waits for MongoDB to pass its health check before starting the app. MongoDB is reachable only on the Compose network and its data is stored in a named volume. Stop the stack with `docker compose down`; this preserves the database volume.
+
+The image uses a multi-stage Node build and runs as the unprivileged `node` user. This setup does not establish healthcare regulatory compliance, clinical safety or production readiness. Keep all data synthetic: never connect real patient records, PHI or production clinical systems. A future production design requires privacy/legal review, threat modelling, managed authenticated database services with TLS, managed secrets, strict network controls, backups and audited operational controls.
