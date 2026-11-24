@@ -29,7 +29,7 @@ export async function authenticate(request: Request, response: Response, next: N
     // or changed roles cannot continue using an otherwise valid JWT.
     const user = await User.findOne({
       _id: claims.sub, tenantId: claims.tenantId, active: true
-    }).select("tenantId role").lean();
+    }).select("tenantId role");
 
     if (!user) {
       response.status(401).json({ error: "Account is inactive or unavailable" });
