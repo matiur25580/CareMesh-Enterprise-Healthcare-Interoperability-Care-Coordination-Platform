@@ -1,25 +1,24 @@
-import { app } from "./app.js";
-import { env } from "./config/env.js";
-import { logger } from "./config/logger.js";
-import { connectDatabase, disconnectDatabase } from "./db/connect.js";
+import { app } from "./app";
+import { connectDatabase } from "./config/database";
 
-let server: ReturnType<typeof app.listen> | undefined;
+const port = Number(process.env.PORT ?? 4100);
+const host = process.env.HOST ?? "0.0.0.0";
+
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("PORT must be an integer between 1 and 65535");
+}
 
 async function start(): Promise<void> {
-  await connectDatabase(env.MONGODB_URI);
-  server = app.listen(env.PORT, () => logger.info({ port: env.PORT }, "CareMesh API listening"));
+  // Database connectivity is optional for the initial synthetic-data demo.
+  // Never add real patient workflows until auth, tenant isolation, consent
+  // provenance, and audit controls are enforced by the service layer.
+  await connectDatabase();
+  app.listen(port, host, () => {
+    console.info(`CareMesh API listening on ${host}:${port}`);
+  });
 }
 
-async function shutdown(signal: string): Promise<void> {
-  logger.info({ signal }, "Shutdown requested");
-  if (server) await new Promise<void>((resolve, reject) => server?.close((error) => error ? reject(error) : resolve()));
-  await disconnectDatabase();
-  process.exit(0);
-}
-
-process.on("SIGINT", () => void shutdown("SIGINT"));
-process.on("SIGTERM", () => void shutdown("SIGTERM"));
-start().catch((error: unknown) => {
-  logger.fatal({ err: error }, "API startup failed");
-  process.exit(1);
+void start().catch((error: unknown) => {
+  console.error("CareMesh API startup failed:", error instanceof Error ? error.message : "unknown error");
+  process.exitCode = 1;
 });
