@@ -157,3 +157,21 @@ npm start
 ```
 
 The API serves `apps/web/dist` at its root when that build exists. Access tokens are held in browser memory and are cleared on refresh/sign-out. Provision a synthetic-data-only test account with the operator-only `npm run user:create` command.
+
+## 10. Synthetic consent decision audit history
+
+Every successful consent simulation is recorded in a tenant-scoped audit collection with the actor account, requested purpose, supplied consent status, decision, reason codes and timestamp. No subject reference, patient identifier or clinical payload is stored in this history. Authorized users can view the latest 25 decisions in the dashboard. These records document simulator activity only; they are not a legal consent ledger and do not authorize EHR or clinical access.
+
+## 11. Automated validation
+
+Run the API and frontend test suite with:
+
+```bash
+npm test
+npm run typecheck
+npm run build
+```
+
+The tests cover consent decision rules, strict input validation, synthetic audit recording, tenant-scoped history queries, JWT account revalidation, role authorization, and dashboard safety messaging. GitHub Actions runs tests, type checks, and production builds on pushes and pull requests.
+
+**Safety boundary:** keep this project synthetic-data-only. Do not enter patient information or connect production clinical systems until privacy, security, consent provenance, access controls, audit integrity, threat modelling and legal/compliance reviews have been completed.
