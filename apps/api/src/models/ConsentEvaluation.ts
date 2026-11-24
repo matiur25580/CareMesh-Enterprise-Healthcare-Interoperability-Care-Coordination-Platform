@@ -1,4 +1,4 @@
-import { Schema, model, models, type Model } from "mongoose";
+import { Schema, model, models } from "mongoose";
 const consentEvaluationSchema = new Schema({
   tenantId: { type: String, required: true, trim: true, maxlength: 120 },
   actorUserId: { type: String, required: true, maxlength: 120 },
@@ -11,5 +11,4 @@ const consentEvaluationSchema = new Schema({
 // No subject identifier or clinical payload is stored in this synthetic-only audit trail.
 consentEvaluationSchema.index({ tenantId: 1, evaluatedAt: -1 });
 consentEvaluationSchema.index({ tenantId: 1, decision: 1, evaluatedAt: -1 });
-const existingModel = models.ConsentEvaluation as Model<any> | undefined;
-export const ConsentEvaluation: Model<any> = existingModel ?? model<any>("ConsentEvaluation", consentEvaluationSchema);
+export const ConsentEvaluation = (models.ConsentEvaluation as any) ?? model<any>("ConsentEvaluation", consentEvaluationSchema);
